@@ -10,9 +10,10 @@ from decimal import Decimal
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 st.set_page_config(page_title="Arbitrage Dashboard", layout="wide")
 
-EXCHANGES = ["binance", "binanceus", "kucoin", "kraken", "coinbase", "okx", "bitfinex", "bybit"]
-CRYPTOS = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "ADA/USDT", "XRP/USDT"]
-INVESTMENTS = [100, 500, 1000, 5000, 10000]
+# All available exchanges from CCXT
+EXCHANGES = ccxt.exchanges
+# Common cryptos; user can input custom
+CRYPTOS = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "ADA/USDT", "XRP/USDT", "DOGE/USDT", "LTC/USDT", "DOT/USDT", "LINK/USDT"]
 
 # ------------------------------------------
 # STYLE (Mature Graphics - Grey Background with Gold Fainted Trishul)
@@ -32,8 +33,8 @@ div[data-testid="stAppViewContainer"] {
 div[data-testid="stAppViewContainer"]::before {
     content: "";
     background: url('https://upload.wikimedia.org/wikipedia/commons/3/3b/Trishul_symbol.svg') no-repeat center;
-    background-size: 300px 300px;
-    opacity: 0.1;
+    background-size: 400px 400px;
+    opacity: 0.3;
     position: fixed;
     top: 50%;
     left: 50%;
@@ -94,7 +95,7 @@ h1 {
     background-color: #0056b3;
 }
 
-.stSelectbox, .stSlider, .stTextInput {
+.stSelectbox, .stSlider, .stTextInput, .stNumberInput {
     margin-bottom: 15px;
 }
 </style>
@@ -131,8 +132,16 @@ with col2:
     sell_api_key = st.text_input(f"{sell_ex.capitalize()} API Key", type="password", key="sell_key")
     sell_secret = st.text_input(f"{sell_ex.capitalize()} Secret", type="password", key="sell_secret")
 
-symbol = st.selectbox("Crypto Pair", CRYPTOS, index=0)
-investment = st.selectbox("Investment ($)", INVESTMENTS, index=2)
+# Allow custom crypto pair input
+symbol_options = CRYPTOS + ["Custom"]
+symbol_choice = st.selectbox("Crypto Pair", symbol_options, index=0)
+if symbol_choice == "Custom":
+    symbol = st.text_input("Enter Custom Pair (e.g., BTC/USDT)", value="BTC/USDT")
+else:
+    symbol = symbol_choice
+
+# Custom investment input
+investment = st.number_input("Investment ($)", min_value=1.0, value=1000.0, step=1.0)
 threshold = st.slider("Profit Threshold (%)", 0.1, 10.0, 1.0)
 
 colA, colB = st.columns(2)
@@ -243,4 +252,3 @@ if st.session_state.log:
 else:
     st.info("No logs yet. Click ▶️ Perform to start monitoring.")
 st.markdown('</div>', unsafe_allow_html=True)
-
