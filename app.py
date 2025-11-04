@@ -11,30 +11,31 @@ from decimal import Decimal
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 st.set_page_config(page_title="Arbitrage Dashboard", layout="wide")
 
-# All available exchanges from CCXT
 EXCHANGES = ccxt.exchanges
 
 # ------------------------------------------
-# STYLE (Faint Golden Trishul + Mature Look)
+# STYLE (Faint Golden Trishul Background)
 # ------------------------------------------
 st.markdown("""
 <style>
 body {
-    background: radial-gradient(circle at top, #2b2b2b, #1a1a1a);
+    background: radial-gradient(circle at top, #1c1c1c, #000000);
     color: #f8f9fa;
     font-family: "Segoe UI", sans-serif;
     overflow-x: hidden;
 }
 
-/* Faint Golden Trishul Background */
+/* Trishul symbol faintly in the background */
 div[data-testid="stAppViewContainer"] {
-    background: radial-gradient(circle at center, #2b2b2b, #121212);
+    background: radial-gradient(circle at center, #1c1c1c, #000000);
+    position: relative;
 }
 div[data-testid="stAppViewContainer"]::before {
     content: "";
-    background: url('https://upload.wikimedia.org/wikipedia/commons/3/3b/Trishul_symbol.svg') no-repeat center;
+    background: url('https://upload.wikimedia.org/wikipedia/commons/3/3b/Trishul_symbol.svg') no-repeat center center;
     background-size: 420px 420px;
-    opacity: 0.08;
+    opacity: 0.06;
+    filter: drop-shadow(0 0 10px rgba(255,215,0,0.5));
     position: fixed;
     top: 50%;
     left: 50%;
@@ -42,45 +43,44 @@ div[data-testid="stAppViewContainer"]::before {
     width: 100%;
     height: 100%;
     z-index: 0;
-    filter: drop-shadow(0px 0px 10px rgba(255,215,0,0.4));
 }
 
-/* Title Glow */
+/* Title */
 h1 {
     color: #FFD700;
     text-align: center;
     font-weight: 700;
-    text-shadow: 0px 0px 15px rgba(255,215,0,0.6);
+    text-shadow: 0px 0px 20px rgba(255,215,0,0.5);
     animation: glow 3s ease-in-out infinite alternate;
 }
 @keyframes glow {
     from { text-shadow: 0 0 10px rgba(255,215,0,0.4); }
-    to { text-shadow: 0 0 30px rgba(255,215,0,0.8), 0 0 40px rgba(255,215,0,0.6); }
+    to { text-shadow: 0 0 25px rgba(255,215,0,0.8), 0 0 40px rgba(255,215,0,0.6); }
 }
 
-/* UI Blocks */
+/* UI blocks */
 .block {
     background: rgba(255,255,255,0.08);
     border-radius: 15px;
     padding: 20px;
-    box-shadow: 0 0 25px rgba(255,215,0,0.1);
+    box-shadow: 0 0 20px rgba(255,215,0,0.15);
     margin-bottom: 25px;
     z-index: 1;
 }
 
-/* Metrics Styling */
+/* Metric cards */
 .metric-green {
-    background-color: rgba(40,167,69,0.15);
+    background-color: rgba(0,255,0,0.15);
     padding: 15px;
     border-radius: 10px;
-    border-left: 4px solid #28a745;
+    border-left: 4px solid #00ff00;
 }
 
 .metric-red {
-    background-color: rgba(220,53,69,0.15);
+    background-color: rgba(255,0,0,0.15);
     padding: 15px;
     border-radius: 10px;
-    border-left: 4px solid #dc3545;
+    border-left: 4px solid #ff0000;
 }
 
 .metric-profit {
@@ -88,13 +88,13 @@ h1 {
     padding: 15px;
     border-radius: 10px;
     border-left: 4px solid #FFD700;
-    box-shadow: 0 0 15px rgba(255,215,0,0.2);
+    box-shadow: 0 0 20px rgba(255,215,0,0.2);
 }
 
 /* Buttons */
 .stButton>button {
-    background: linear-gradient(to right, #FFD700, #ffb300);
-    color: #1a1a1a;
+    background: linear-gradient(to right, #FFD700, #b8860b);
+    color: #000;
     border: none;
     border-radius: 8px;
     padding: 12px 22px;
@@ -103,11 +103,11 @@ h1 {
     transition: 0.3s;
 }
 .stButton>button:hover {
-    background: linear-gradient(to right, #ffcc33, #e6a700);
+    background: linear-gradient(to right, #ffcc33, #d4af37);
     transform: scale(1.04);
 }
 
-/* Input Fields */
+/* Inputs */
 .stSelectbox, .stTextInput, .stNumberInput {
     border-radius: 5px;
     background-color: rgba(255,255,255,0.05);
@@ -115,7 +115,7 @@ h1 {
 
 /* Subheaders */
 h2, h3, h4 {
-    color: #f8f9fa;
+    color: #fff;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -123,7 +123,7 @@ h2, h3, h4 {
 # ------------------------------------------
 # HEADER
 # ------------------------------------------
-st.title("Trishul Arbitrage Dashboard ⚡")
+st.title("Arbitrage Dashboard ⚡")
 
 # ------------------------------------------
 # SESSION
