@@ -3,52 +3,66 @@ import time
 import logging
 import streamlit as st
 import threading
-from decimal import Decimal, ROUND_DOWN
 
 # --------------------------- CONFIGURATION ----------------------------
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 AVAILABLE_EXCHANGES = ['binance', 'coinbase', 'kraken', 'kucoin', 'okx', 'gate']
-AVAILABLE_CRYPTOS = ['BTC/USDT', 'ETH/USDT', 'ADA/USDT', 'SOL/USDT']
+AVAILABLE_CRYPTOS = ['BTC', 'ETH', 'ADA', 'SOL']
+AVAILABLE_CURRENCIES = ['USDT', 'USD', 'INR', 'EUR']
 AVAILABLE_AMOUNTS = [500, 1000, 5000, 10000]
 
-PROFIT_THRESHOLD = 0.001  # 0.1%
+DEFAULT_PROFIT_THRESHOLD = 0.01  # 1%
 SLIPPAGE_THRESHOLD = 0.005  # 0.5%
-POLL_INTERVAL = 5  # Seconds
+POLL_INTERVAL = 5  # seconds
 
 # --------------------------- STREAMLIT STYLING ----------------------------
 st.set_page_config(page_title="🚀 Brilliant Arbitrage Dashboard", layout="wide")
 st.markdown("""
 <style>
 body {
-    background: radial-gradient(circle at top left, #1e3c72, #2a5298);
-    color: white;
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    color: #e0e0e0;
+    font-family: 'Poppins', sans-serif;
 }
 .stApp {
-    background: rgba(255, 255, 255, 0.07);
+    background: rgba(25, 25, 25, 0.75);
     backdrop-filter: blur(15px);
     border-radius: 20px;
-    padding: 20px;
-    box-shadow: 0px 0px 25px rgba(255,255,255,0.1);
+    padding: 25px;
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.5);
 }
 h1, h2, h3, h4 {
-    color: #FFD700;
+    color: #00FFFF;
+    text-shadow: 0px 0px 8px #00FFFF;
 }
 .stButton>button {
-    background: linear-gradient(90deg, #ff8c00, #ff4500);
+    background: linear-gradient(90deg, #ff512f, #dd2476);
     color: white;
     border-radius: 8px;
     border: none;
     font-weight: bold;
-    padding: 8px 16px;
+    padding: 8px 18px;
 }
 .stSelectbox, .stNumberInput, .stTextInput {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.12);
     color: white !important;
     border-radius: 6px;
 }
 table {
     color: white;
+}
+.status-card {
+    background: linear-gradient(145deg, #232526, #414345);
+    padding: 15px;
+    border-radius: 10px;
+    margin-top: 10px;
+}
+.profit-card {
+    background: linear-gradient(145deg, #11998e, #38ef7d);
+    color: black;
+    border-radius: 10px;
+    padding: 15px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -91,9 +105,9 @@ def execute_arbitrage(direction, amount):
 # --------------------------- MAIN DASHBOARD ----------------------------
 def main():
     st.title("🚀 Brilliant Crypto Arbitrage Dashboard")
-    st.markdown("Monitor real-time prices, find best opportunities, and auto-execute profitable arbitrages — all visually ✨")
+    st.markdown("Monitor real-time prices, discover profitable spreads, and auto-execute arbitrage safely.")
 
-    with st.expander("⚙️ API Configuration (Set once here, no code changes needed)", expanded=True):
+    with st.expander("⚙️ API Configuration (Enter keys directly here)", expanded=True):
         col1, col2 = st.columns(2)
         with col1:
             binance_api = st.text_input("Binance API Key", type="password")
@@ -102,15 +116,23 @@ def main():
             kucoin_api = st.text_input("KuCoin API Key", type="password")
             kucoin_secret = st.text_input("KuCoin Secret Key", type="password")
 
-    col1, col2, col3 = st.columns(3)
+    # User selection area
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         ex1 = st.selectbox("Exchange 1", AVAILABLE_EXCHANGES, index=0)
     with col2:
         ex2 = st.selectbox("Exchange 2", AVAILABLE_EXCHANGES, index=1)
     with col3:
-        symbol = st.selectbox("Crypto", AVAILABLE_CRYPTOS, index=0)
+        crypto = st.selectbox("Crypto", AVAILABLE_CRYPTOS, index=0)
+    with col4:
+        currency = st.selectbox("Currency", AVAILABLE_CURRENCIES, index=0)
 
-    investment = st.selectbox("Investment Amount ($)", AVAILABLE_AMOUNTS, index=1)
+    symbol = f"{crypto}/{currency}"
+    investment = st.selectbox("Investment Amount", AVAILABLE_AMOUNTS, index=1)
+
+    profit_threshold = st.slider("Set Minimum Profit Threshold (%)", min_value=0.5, max_value=5.0, value=1.5, step=0.1)
+    PROFIT_THRESHOLD = profit_threshold / 100
+
     start = st.button("🚀 Start Arbitrage Monitoring")
 
     if start:
@@ -132,7 +154,7 @@ def main():
                 st.error(f"Failed to initialize {ex}: {e}")
                 return
 
-        st.success("✅ Monitoring started! Fetching real-time prices and opportunities...")
+        st.success("✅ Monitoring started! Fetching live data...")
 
         price_placeholder = st.empty()
         profit_placeholder = st.empty()
@@ -165,18 +187,19 @@ def main():
                 | {ex1.upper()} | ${prices_fees[ex1][0]:.2f} | {prices_fees[ex1][1]*100:.2f}% | ${prices_fees[ex1][2]:.4f} |
                 | {ex2.upper()} | ${prices_fees[ex2][0]:.2f} | {prices_fees[ex2][1]*100:.2f}% | ${prices_fees[ex2][2]:.4f} |
                 """
-                price_placeholder.markdown(f"### 📊 Real-Time Prices & Fees\n{price_table}")
+                price_placeholder.markdown(f"<div class='status-card'><h3>📊 Real-Time Prices & Fees</h3>{price_table}</div>", unsafe_allow_html=True)
 
                 investment_profit = profit_pct * investment if profit_pct > 0 else 0
-                color = "🟢" if profit_pct > 0 else "🔴"
                 profit_placeholder.markdown(f"""
-                ### 💰 Arbitrage Analysis  
-                {color} **Direction:** {direction}  
-                - **Profit %:** {profit_pct*100:.3f}%  
-                - **Profit on ${investment}:** ${investment_profit:.3f}  
-                - **After Slippage:** ${adjusted_profit:.4f}  
-                - **Risk:** {'⚠️ Slippage Risk' if slippage_risk else '✅ Safe to Execute'}  
-                """)
+                <div class='profit-card'>
+                <h3>💰 Arbitrage Analysis</h3>
+                <b>Direction:</b> {direction}<br>
+                <b>Profit %:</b> {profit_pct*100:.3f}%<br>
+                <b>Profit on ${investment}:</b> ${investment_profit:.3f}<br>
+                <b>After Slippage:</b> ${adjusted_profit:.4f}<br>
+                <b>Risk:</b> {'⚠️ Slippage Risk' if slippage_risk else '✅ Safe to Execute'}
+                </div>
+                """, unsafe_allow_html=True)
 
                 if profit_pct > PROFIT_THRESHOLD and not slippage_risk:
                     crypto_amount = investment / prices_fees[ex1][0]
