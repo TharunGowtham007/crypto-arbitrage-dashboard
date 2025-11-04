@@ -1,29 +1,29 @@
 import ccxt
 import time
 import logging
-  import streamlit as st
-  import threading
-  from decimal import Decimal, ROUND_DOWN
+import streamlit as st
+import threading
+from decimal import Decimal, ROUND_DOWN
 
   # Configure logging
-  logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
   # Trading pair
-  SYMBOL = 'BTC/USDT'
+SYMBOL = 'BTC/USDT'
 
   # Arbitrage settings
-  PROFIT_THRESHOLD = 0.001  # 0.1% minimum profit
-  SLIPPAGE_THRESHOLD = 0.005  # 0.5% slippage check
-  POLL_INTERVAL = 5  # Seconds between checks
-  MIN_TRADE_AMOUNT = 0.001  # Minimum BTC
+PROFIT_THRESHOLD = 0.001  # 0.1% minimum profit
+SLIPPAGE_THRESHOLD = 0.005  # 0.5% slippage check
+POLL_INTERVAL = 5  # Seconds between checks
+MIN_TRADE_AMOUNT = 0.001  # Minimum BTC
 
   # List of supported exchanges (expanded; includes DeFi like Uniswap)
-  EXCHANGES = [
+EXCHANGES = [
       'binance', 'coinbase', 'kraken', 'zebpay', 'bitfinex', 'huobi', 'okx', 'kucoin', 'gate', 'bybit', 'uniswap'  # Add more as needed
   ]
 
   # API Keys (set for real trading; None for simulation)
-  API_KEYS = {
+API_KEYS = {
       'binance': {'apiKey': st.secrets.get('BINANCE_API_KEY'), 'secret': st.secrets.get('BINANCE_SECRET')},  # Use Streamlit secrets for deployment
       'coinbase': {'apiKey': None, 'secret': None},
       'kraken': {'apiKey': None, 'secret': None},
@@ -38,8 +38,8 @@ import logging
   }
 
   # Initialize exchanges
-  exchange_instances = {}
-  for ex in EXCHANGES:
+exchange_instances = {}
+for ex in EXCHANGES:
       try:
           if ex == 'uniswap':
               # DeFi setup: Requires web3 and Ethereum provider (e.g., Infura)
