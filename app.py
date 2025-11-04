@@ -15,72 +15,107 @@ st.set_page_config(page_title="Arbitrage Dashboard", layout="wide")
 EXCHANGES = ccxt.exchanges
 
 # ------------------------------------------
-# STYLE (Mature Graphics - Grey Background)
+# STYLE (Faint Golden Trishul + Mature Look)
 # ------------------------------------------
 st.markdown("""
 <style>
 body {
-    background: linear-gradient(to bottom, #6c757d, #495057);
+    background: radial-gradient(circle at top, #2b2b2b, #1a1a1a);
     color: #f8f9fa;
     font-family: "Segoe UI", sans-serif;
+    overflow-x: hidden;
 }
 
+/* Faint Golden Trishul Background */
 div[data-testid="stAppViewContainer"] {
-    background: linear-gradient(to bottom, #6c757d, #495057);
+    background: radial-gradient(circle at center, #2b2b2b, #121212);
+}
+div[data-testid="stAppViewContainer"]::before {
+    content: "";
+    background: url('https://upload.wikimedia.org/wikipedia/commons/3/3b/Trishul_symbol.svg') no-repeat center;
+    background-size: 420px 420px;
+    opacity: 0.08;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    filter: drop-shadow(0px 0px 10px rgba(255,215,0,0.4));
 }
 
+/* Title Glow */
 h1 {
-    color: #f8f9fa;
+    color: #FFD700;
     text-align: center;
-    font-weight: 600;
-    margin-bottom: 20px;
+    font-weight: 700;
+    text-shadow: 0px 0px 15px rgba(255,215,0,0.6);
+    animation: glow 3s ease-in-out infinite alternate;
+}
+@keyframes glow {
+    from { text-shadow: 0 0 10px rgba(255,215,0,0.4); }
+    to { text-shadow: 0 0 30px rgba(255,215,0,0.8), 0 0 40px rgba(255,215,0,0.6); }
 }
 
+/* UI Blocks */
 .block {
-    background: rgba(255,255,255,0.1);
-    border-radius: 10px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 15px;
     padding: 20px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    margin-bottom: 20px;
+    box-shadow: 0 0 25px rgba(255,215,0,0.1);
+    margin-bottom: 25px;
     z-index: 1;
 }
 
+/* Metrics Styling */
 .metric-green {
-    background-color: rgba(40,167,69,0.2);
+    background-color: rgba(40,167,69,0.15);
     padding: 15px;
-    border-radius: 8px;
+    border-radius: 10px;
     border-left: 4px solid #28a745;
 }
 
 .metric-red {
-    background-color: rgba(220,53,69,0.2);
+    background-color: rgba(220,53,69,0.15);
     padding: 15px;
-    border-radius: 8px;
+    border-radius: 10px;
     border-left: 4px solid #dc3545;
 }
 
 .metric-profit {
-    background-color: rgba(255,193,7,0.2);
+    background-color: rgba(255,215,0,0.1);
     padding: 15px;
-    border-radius: 8px;
-    border-left: 4px solid #ffc107;
+    border-radius: 10px;
+    border-left: 4px solid #FFD700;
+    box-shadow: 0 0 15px rgba(255,215,0,0.2);
 }
 
+/* Buttons */
 .stButton>button {
-    background-color: #007bff;
-    color: white;
+    background: linear-gradient(to right, #FFD700, #ffb300);
+    color: #1a1a1a;
     border: none;
-    border-radius: 5px;
-    padding: 10px 20px;
+    border-radius: 8px;
+    padding: 12px 22px;
     font-size: 16px;
+    font-weight: 600;
+    transition: 0.3s;
 }
-
 .stButton>button:hover {
-    background-color: #0056b3;
+    background: linear-gradient(to right, #ffcc33, #e6a700);
+    transform: scale(1.04);
 }
 
-.stSelectbox, .stSlider, .stTextInput, .stNumberInput {
-    margin-bottom: 15px;
+/* Input Fields */
+.stSelectbox, .stTextInput, .stNumberInput {
+    border-radius: 5px;
+    background-color: rgba(255,255,255,0.05);
+}
+
+/* Subheaders */
+h2, h3, h4 {
+    color: #f8f9fa;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -88,7 +123,7 @@ h1 {
 # ------------------------------------------
 # HEADER
 # ------------------------------------------
-st.title("Arbitrage Dashboard")
+st.title("Trishul Arbitrage Dashboard ⚡")
 
 # ------------------------------------------
 # SESSION
@@ -104,7 +139,7 @@ if "log" not in st.session_state:
 # INPUT UI
 # ------------------------------------------
 st.markdown('<div class="block">', unsafe_allow_html=True)
-st.subheader("Configuration")
+st.subheader("⚙️ Configuration")
 
 col1, col2 = st.columns(2)
 with col1:
@@ -116,11 +151,7 @@ with col2:
     sell_api_key = st.text_input(f"{sell_ex.capitalize()} API Key", type="password", key="sell_key")
     sell_secret = st.text_input(f"{sell_ex.capitalize()} Secret", type="password", key="sell_secret")
 
-# Allow input of any crypto pair
 symbol = st.text_input("Crypto Pair (e.g., BTC/USDT, ETH/BTC)", value="BTC/USDT")
-st.caption("Enter any available pair on the selected exchanges. The app will validate it.")
-
-# Custom investment input
 investment = st.number_input("Investment ($)", min_value=1.0, value=1000.0, step=1.0)
 threshold = st.slider("Profit Threshold (%)", 0.1, 10.0, 1.0)
 
@@ -173,12 +204,12 @@ def execute_trade(ex, side, symbol, amount, price):
 if perform:
     st.session_state.armed = True
     st.session_state.stop = False
-    st.success("Bot armed ✅ — waiting for profitable signal...")
+    st.success("⚙️ Bot armed — scanning for profitable signals...")
 
 if stop:
     st.session_state.armed = False
     st.session_state.stop = True
-    st.warning("Bot stopped ⛔")
+    st.warning("⛔ Bot stopped manually.")
 
 if st.session_state.armed and not st.session_state.stop:
     buy = create_exchange(buy_ex, buy_api_key, buy_secret)
@@ -187,9 +218,8 @@ if st.session_state.armed and not st.session_state.stop:
     if not buy or not sell:
         st.error("Exchange initialization failed. Ensure API keys are correct or switch exchanges.")
     else:
-        # Check if symbol is available on both exchanges
         if symbol not in buy.markets or symbol not in sell.markets:
-            st.error(f"Pair '{symbol}' not available on one or both exchanges. Please check and try again.")
+            st.error(f"Pair '{symbol}' not available on one or both exchanges.")
             st.session_state.armed = False
         else:
             pb = get_price(buy, symbol)
@@ -211,15 +241,14 @@ if st.session_state.armed and not st.session_state.stop:
                         st.success(f"🚀 PROFIT DETECTED (SIMULATION): +${profit:.2f} ({diff:.2f}%) — simulated trade executed.")
                         st.session_state.log.append(f"{timestamp}: Simulated trade: +${profit:.2f} ({diff:.2f}%)")
                     else:
-                        # Attempt real trade
-                        amount = investment / pb  # Approximate amount in crypto
+                        amount = investment / pb
                         buy_order = execute_trade(buy, 'buy', symbol, amount, pb)
                         sell_order = execute_trade(sell, 'sell', symbol, amount, ps)
                         if buy_order and sell_order:
                             st.success(f"🚀 PROFIT DETECTED: Real trade executed! +${profit:.2f} ({diff:.2f}%)")
                             st.session_state.log.append(f"{timestamp}: Real trade executed: +${profit:.2f} ({diff:.2f}%)")
                         else:
-                            st.error("Real trade failed. Check balances and API permissions.")
+                            st.error("Real trade failed. Check balances and permissions.")
                     st.session_state.armed = False
                 else:
                     st.info(f"Monitoring... Diff: {diff:.2f}% (< {threshold}%)")
@@ -229,12 +258,12 @@ if st.session_state.armed and not st.session_state.stop:
     st.rerun()
 
 # ------------------------------------------
-# RECENT TRADES HISTORY
+# TRADE HISTORY
 # ------------------------------------------
 st.markdown('<div class="block">', unsafe_allow_html=True)
-st.subheader("Recent Trades History")
+st.subheader("📜 Recent Trades History")
 if st.session_state.log:
-    st.write("\n".join(st.session_state.log[-20:]))  # Show last 20 for more history
+    st.write("\n".join(st.session_state.log[-20:]))
 else:
     st.info("No trades yet. Click ▶️ Perform to start monitoring.")
 st.markdown('</div>', unsafe_allow_html=True)
