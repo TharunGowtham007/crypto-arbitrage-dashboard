@@ -2,6 +2,7 @@ import ccxt
 import streamlit as st
 import time
 import logging
+import datetime
 from decimal import Decimal
 
 # ------------------------------------------
@@ -82,15 +83,6 @@ h1 {
     margin-bottom: 15px;
 }
 </style>
-""", unsafe_allow_html=True)
-
-# ------------------------------------------
-# TRISHUL BACKGROUND IMAGE
-# ------------------------------------------
-st.markdown("""
-<div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 0; opacity: 0.3; pointer-events: none;">
-<img src="https://upload.wikimedia.org/wikipedia/commons/3/3b/Trishul_symbol.svg" style="width: 500px; height: 500px; filter: sepia(100%) hue-rotate(45deg) saturate(200%);">
-</div>
 """, unsafe_allow_html=True)
 
 # ------------------------------------------
@@ -214,9 +206,10 @@ if st.session_state.armed and not st.session_state.stop:
                     st.markdown(f"<div class='metric-profit'><h4>Profit</h4><p>${profit:.2f} ({diff:.2f}%)</p></div>", unsafe_allow_html=True)
 
                 if diff >= threshold:
+                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     if sim:
                         st.success(f"🚀 PROFIT DETECTED (SIMULATION): +${profit:.2f} ({diff:.2f}%) — simulated trade executed.")
-                        st.session_state.log.append(f"Simulated trade: +${profit:.2f} ({diff:.2f}%)")
+                        st.session_state.log.append(f"{timestamp}: Simulated trade: +${profit:.2f} ({diff:.2f}%)")
                     else:
                         # Attempt real trade
                         amount = investment / pb  # Approximate amount in crypto
@@ -224,7 +217,7 @@ if st.session_state.armed and not st.session_state.stop:
                         sell_order = execute_trade(sell, 'sell', symbol, amount, ps)
                         if buy_order and sell_order:
                             st.success(f"🚀 PROFIT DETECTED: Real trade executed! +${profit:.2f} ({diff:.2f}%)")
-                            st.session_state.log.append(f"Real trade executed: +${profit:.2f} ({diff:.2f}%)")
+                            st.session_state.log.append(f"{timestamp}: Real trade executed: +${profit:.2f} ({diff:.2f}%)")
                         else:
                             st.error("Real trade failed. Check balances and API permissions.")
                     st.session_state.armed = False
@@ -236,12 +229,12 @@ if st.session_state.armed and not st.session_state.stop:
     st.rerun()
 
 # ------------------------------------------
-# LOGS
+# RECENT TRADES HISTORY
 # ------------------------------------------
 st.markdown('<div class="block">', unsafe_allow_html=True)
-st.subheader("Activity Log")
+st.subheader("Recent Trades History")
 if st.session_state.log:
-    st.write("\n".join(st.session_state.log[-10:]))
+    st.write("\n".join(st.session_state.log[-20:]))  # Show last 20 for more history
 else:
-    st.info("No logs yet. Click ▶️ Perform to start monitoring.")
+    st.info("No trades yet. Click ▶️ Perform to start monitoring.")
 st.markdown('</div>', unsafe_allow_html=True)
