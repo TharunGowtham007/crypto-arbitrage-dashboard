@@ -3,12 +3,11 @@ import streamlit as st
 import time
 import logging
 import datetime
-from decimal import Decimal
 
 # ------------------------------------------
 # BASIC CONFIG
 # ------------------------------------------
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 st.set_page_config(page_title="Arbitrage Dashboard", layout="wide")
 
 EXCHANGES = ccxt.exchanges
@@ -106,15 +105,15 @@ def get_price(ex, sym):
         logging.error(f"Failed to fetch price: {e}")
         return None
 
-def get_fee(ex, sym, side, amount, price):
+def get_fee(ex, sym, side):
     try:
         market = ex.market(sym)
         maker_fee = market.get("maker", 0.001)
         taker_fee = market.get("taker", 0.001)
-        return Decimal(taker_fee if side == "sell" else maker_fee)
+        return taker_fee if side == "sell" else maker_fee
     except Exception as e:
         logging.warning(f"Fee fetch failed for {ex.id}: {e}")
-        return Decimal("0.001")
+        return 0.001
 
 # ------------------------------------------
 # INPUT UI
@@ -183,50 +182,53 @@ if st.session_state.armed and not st.session_state.stop:
 
     if not buy or not sell:
         st.error("Exchange initialization failed.")
+        st.session_state.armed = False
+    elif not symbol:
+        st.error("No symbol selected.")
+        st.session_state.armed = False
+    elif symbol not in buy.markets or symbol not in sell.markets:
+        st.error(f"Pair '{symbol}' not available on both exchanges.")
+        st.session_state.armed = False
     else:
-        if symbol not in buy.markets or symbol not in sell.markets:
-            st.error(f"Pair '{symbol}' not available on both exchanges.")
-            st.session_state.armed = False
+        pb = get_price(buy, symbol)
+        ps = get_price(sell, symbol)
+        if not pb or not ps or pb <= 0 or ps <= 0:
+            st.warning("Invalid or unavailable prices.")
         else:
-            pb = get_price(buy, symbol)
-            ps = get_price(sell, symbol)
-            if pb and ps:
-                buy_fee = get_fee(buy, symbol, "buy", 1, pb)
-                sell_fee = get_fee(sell, symbol, "sell", 1, ps)
+            buy_fee = get_fee(buy, symbol, "buy")
+            sell_fee = get_fee(sell, symbol, "sell")
 
-                # Fix: Use Decimal for consistent types (avoids TypeError when subtracting Decimal from float)
-                diff = Decimal((ps - pb) / pb) * 100
-                fee_cost = (buy_fee + sell_fee) * 100
-                net_diff = diff - fee_cost
-                profit = float(investment * (net_diff / 100))  # Convert to float for display
+            diff = ((ps - pb) / pb) * 100
+            fee_cost = (buy_fee + sell_fee) * 100
+            net_diff = diff - fee_cost
+            profit = investment * (net_diff / 100)
 
-                colx, coly, colz = st.columns(3)
-                with colx:
-                    st.markdown(f"<div class='metric-green'><h4>Buy @ {buy_ex.capitalize()}</h4><p>${pb:.2f}</p></div>", unsafe_allow_html=True)
-                with coly:
-                    st.markdown(f"<div class='metric-red'><h4>Sell @ {sell_ex.capitalize()}</h4><p>${ps:.2f}</p></div>", unsafe_allow_html=True)
-                with colz:
-                    st.markdown(f"<div class='metric-profit'><h4>Profit (after fees)</h4><p>${profit:.2f} ({float(net_diff):.2f}%)</p></div>", unsafe_allow_html=True)
+            colx, coly, colz = st.columns(3)
+            with colx:
+                st.markdown(f"<div class='metric-green'><h4>Buy @ {buy_ex.capitalize()}</h4><p>${pb:.2f}</p></div>", unsafe_allow_html=True)
+            with coly:
+                st.markdown(f"<div class='metric-red'><h4>Sell @ {sell_ex.capitalize()}</h4><p>${ps:.2f}</p></div>", unsafe_allow_html=True)
+            with colz:
+                st.markdown(f"<div class='metric-profit'><h4>Profit (after fees)</h4><p>${profit:.2f} ({net_diff:.2f}%)</p></div>", unsafe_allow_html=True)
 
-                if net_diff <= 0:
-                    st.warning("Loss detected — stopped automatically.")
-                    st.session_state.armed = False
-                elif net_diff >= threshold:
-                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    if sim:
-                        st.success(f"SIM PROFIT: +${profit:.2f} ({float(net_diff):.2f}%)")
-                        st.session_state.log.append(f"{timestamp}: Simulated +${profit:.2f}")
-                    else:
-                        st.success(f"REAL PROFIT: +${profit:.2f} ({float(net_diff):.2f}%)")
-                        st.session_state.log.append(f"{timestamp}: Real +${profit:.2f}")
-                    st.session_state.armed = False
+            if net_diff <= 0:
+                st.warning("Loss detected — stopped automatically.")
+                st.session_state.armed = False
+            elif net_diff >= threshold:
+                timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                if sim:
+                    st.success(f"SIM PROFIT: +${profit:.2f} ({net_diff:.2f}%)")
+                    st.session_state.log.append(f"{timestamp}: Simulated +${profit:.2f}")
                 else:
-                    st.info(f"Monitoring... Diff: {float(net_diff):.2f}% (< {threshold}%)")
+                    st.success(f"REAL PROFIT: +${profit:.2f} ({net_diff:.2f}%)")
+                    st.session_state.log.append(f"{timestamp}: Real +${profit:.2f}")
+                st.session_state.armed = False
             else:
-                st.warning("Price unavailable.")
-    time.sleep(5)
-    st.session_state.refresh_flag = not st.session_state.get("refresh_flag", False)
-    st.rerun()
+                st.info(f"Monitoring... Diff: {net_diff:.2f}% (< {threshold}%)")
+
+    if st.session_state.armed:
+        time.sleep(5)
+        st.rerun()
 
 # ------------------------------------------
 # TRADE HISTORY
