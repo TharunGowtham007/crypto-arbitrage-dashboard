@@ -15,51 +15,67 @@ CRYPTOS = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "ADA/USDT", "XRP/USDT
 INVESTMENTS = [100, 500, 1000, 5000, 10000]
 
 # ------------------------------------------
-# STYLE (Mature Graphics - Clean, Professional)
+# STYLE (Mature Graphics - Grey Background with Gold Fainted Trishul)
 # ------------------------------------------
 st.markdown("""
 <style>
 body {
-    background: linear-gradient(to bottom, #f8f9fa, #e9ecef);
-    color: #212529;
+    background: linear-gradient(to bottom, #6c757d, #495057);
+    color: #f8f9fa;
     font-family: "Segoe UI", sans-serif;
 }
 
 div[data-testid="stAppViewContainer"] {
-    background: linear-gradient(to bottom, #f8f9fa, #e9ecef);
+    background: linear-gradient(to bottom, #6c757d, #495057);
+}
+
+div[data-testid="stAppViewContainer"]::before {
+    content: "";
+    background: url('https://upload.wikimedia.org/wikipedia/commons/3/3b/Trishul_symbol.svg') no-repeat center;
+    background-size: 300px 300px;
+    opacity: 0.1;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    filter: sepia(100%) hue-rotate(45deg) saturate(200%);
 }
 
 h1 {
-    color: #495057;
+    color: #f8f9fa;
     text-align: center;
     font-weight: 600;
     margin-bottom: 20px;
 }
 
 .block {
-    background: rgba(255,255,255,0.9);
+    background: rgba(255,255,255,0.1);
     border-radius: 10px;
     padding: 20px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
     margin-bottom: 20px;
+    z-index: 1;
 }
 
 .metric-green {
-    background-color: rgba(40,167,69,0.1);
+    background-color: rgba(40,167,69,0.2);
     padding: 15px;
     border-radius: 8px;
     border-left: 4px solid #28a745;
 }
 
 .metric-red {
-    background-color: rgba(220,53,69,0.1);
+    background-color: rgba(220,53,69,0.2);
     padding: 15px;
     border-radius: 8px;
     border-left: 4px solid #dc3545;
 }
 
 .metric-profit {
-    background-color: rgba(255,193,7,0.1);
+    background-color: rgba(255,193,7,0.2);
     padding: 15px;
     border-radius: 8px;
     border-left: 4px solid #ffc107;
@@ -154,6 +170,14 @@ def get_price(ex, sym):
         logging.error(f"Failed to fetch price for {sym} on {ex.id}: {e}")
         return None
 
+def execute_trade(ex, side, symbol, amount, price):
+    try:
+        order = ex.create_order(symbol, 'limit', side, amount, price)
+        return order
+    except Exception as e:
+        logging.error(f"Trade execution failed: {e}")
+        return None
+
 # ------------------------------------------
 # MAIN LOOP
 # ------------------------------------------
@@ -188,8 +212,19 @@ if st.session_state.armed and not st.session_state.stop:
                 st.markdown(f"<div class='metric-profit'><h4>Profit</h4><p>${profit:.2f} ({diff:.2f}%)</p></div>", unsafe_allow_html=True)
 
             if diff >= threshold:
-                st.success(f"🚀 PROFIT DETECTED: +${profit:.2f} ({diff:.2f}%) — executing trade...")
-                st.session_state.log.append(f"Trade executed: +${profit:.2f} ({diff:.2f}%)")
+                if sim:
+                    st.success(f"🚀 PROFIT DETECTED (SIMULATION): +${profit:.2f} ({diff:.2f}%) — simulated trade executed.")
+                    st.session_state.log.append(f"Simulated trade: +${profit:.2f} ({diff:.2f}%)")
+                else:
+                    # Attempt real trade
+                    amount = investment / pb  # Approximate amount in crypto
+                    buy_order = execute_trade(buy, 'buy', symbol, amount, pb)
+                    sell_order = execute_trade(sell, 'sell', symbol, amount, ps)
+                    if buy_order and sell_order:
+                        st.success(f"🚀 PROFIT DETECTED: Real trade executed! +${profit:.2f} ({diff:.2f}%)")
+                        st.session_state.log.append(f"Real trade executed: +${profit:.2f} ({diff:.2f}%)")
+                    else:
+                        st.error("Real trade failed. Check balances and API permissions.")
                 st.session_state.armed = False
             else:
                 st.info(f"Monitoring... Diff: {diff:.2f}% (< {threshold}%)")
@@ -208,3 +243,4 @@ if st.session_state.log:
 else:
     st.info("No logs yet. Click ▶️ Perform to start monitoring.")
 st.markdown('</div>', unsafe_allow_html=True)
+
