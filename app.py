@@ -60,7 +60,7 @@ for ex in EXCHANGES:
           logging.warning(f"Failed to initialize {ex}: {e}")
 
   # Function to fetch price and fees
-  def get_price_and_fees(exchange, symbol):
+def get_price_and_fees(exchange, symbol):
       try:
           ticker = exchange.fetch_ticker(symbol)
           price = ticker['last']
@@ -72,7 +72,7 @@ for ex in EXCHANGES:
           return None, None, None
 
   # Function to calculate arbitrage (dollar and % profit)
-  def calculate_arbitrage(prices_fees):
+def calculate_arbitrage(prices_fees):
       best_profit_dollar = -float('inf')
       best_profit_pct = -float('inf')
       best_direction = None
@@ -91,7 +91,7 @@ for ex in EXCHANGES:
       return best_profit_dollar, best_profit_pct, best_direction
 
   # Slippage check
-  def check_slippage_risk(profit_dollar):
+def check_slippage_risk(profit_dollar):
       if profit_dollar <= 0:
           return True, profit_dollar
       slippage_impact = profit_dollar * SLIPPAGE_THRESHOLD
@@ -99,7 +99,7 @@ for ex in EXCHANGES:
       return adjusted_profit < 0, adjusted_profit
 
   # Execute arbitrage
-  def execute_arbitrage(direction, amount):
+def execute_arbitrage(direction, amount):
       if not any(API_KEYS[ex]['apiKey'] for ex in EXCHANGES if API_KEYS[ex]['apiKey']):
           return "Simulation: Arbitrage executed (no API keys set)"
       # Parse and execute (add real trade logic here)
@@ -107,7 +107,7 @@ for ex in EXCHANGES:
       return f"Executed: {direction}"
 
   # Streamlit Dashboard
-  def main():
+def main():
       st.title("🚀 Brilliant Multi-Exchange Crypto Arbitrage Dashboard")
       st.markdown(f"**Symbol:** {SYMBOL} | **Profit Threshold:** {PROFIT_THRESHOLD * 100}% | **Slippage Threshold:** {SLIPPAGE_THRESHOLD * 100}%")
       st.markdown("**Status:** Real-time monitoring across all supported exchanges (including DeFi). Profits/losses updated every 5 seconds.")
