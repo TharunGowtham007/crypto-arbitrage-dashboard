@@ -18,7 +18,8 @@ import os
 if not os.path.exists('config.yaml'):
     raise FileNotFoundError(f"config.yaml not found in: {os.getcwd()} \nFiles: {os.listdir()}")
 
-with open(r"C:\Users\lenovo\OneDrive\CryptoArbitrage\config.yaml") as file:
+with open('config.yaml') as file:
+
 
     config = yaml.load(file, Loader=SafeLoader)
 
