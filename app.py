@@ -11,24 +11,30 @@ from yaml.loader import SafeLoader
 # LOAD CONFIG FOR AUTHENTICATION
 # ------------------------------------------
 import os
+import yaml
+import streamlit_authenticator as stauth
+from yaml.loader import SafeLoader
+
+# Debug info (optional)
 print("Current working directory:", os.getcwd())
 print("Files in this directory:", os.listdir())
 
-import os
+# Ensure config.yaml exists
 if not os.path.exists('config.yaml'):
     raise FileNotFoundError(f"config.yaml not found in: {os.getcwd()} \nFiles: {os.listdir()}")
 
+# Load YAML config properly
 with open('config.yaml') as file:
-
-
     config = yaml.load(file, Loader=SafeLoader)
 
+# Initialize the authenticator (new syntax)
 authenticator = stauth.Authenticate(
     config['credentials'],
     config['cookie']['name'],
     config['cookie']['key'],
     config['cookie']['expiry_days']
 )
+
 
 
 # ------------------------------------------
@@ -95,7 +101,8 @@ div[data-testid="stAppViewContainer"] > .main {
 # ------------------------------------------
 # AUTHENTICATION
 # ------------------------------------------
-name, authentication_status, username = authenticator.login(location='main', fields=['username', 'password'])
+name, authentication_status, username = authenticator.login(location='main')
+
 
 
 if authentication_status:
