@@ -1,6 +1,6 @@
-  import ccxt
-  import time
-  import logging
+import ccxt
+import time
+import logging
   import streamlit as st
   import threading
   from decimal import Decimal, ROUND_DOWN
