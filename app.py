@@ -14,6 +14,38 @@ st.set_page_config(page_title="Arbitrage Dashboard", layout="wide")
 EXCHANGES = ccxt.exchanges
 
 # ------------------------------------------
+# EXCHANGE HELPERS (MOVED TO TOP)
+# ------------------------------------------
+def create_exchange(name, api_key=None, secret=None):
+    try:
+        config = {"enableRateLimit": True}
+        if api_key and secret:
+            config.update({"apiKey": api_key, "secret": secret})
+        ex = getattr(ccxt, name)(config)
+        ex.load_markets()
+        return ex
+    except Exception as e:
+        logging.error(f"Failed to initialize {name}: {e}")
+        st.warning(f"{name.capitalize()} unavailable. Check API keys or try another exchange.")
+        return None
+
+def get_price(ex, sym):
+    try:
+        t = ex.fetch_ticker(sym)
+        return t["last"]
+    except Exception as e:
+        logging.error(f"Failed to fetch price for {sym} on {ex.id}: {e}")
+        return None
+
+def execute_trade(ex, side, symbol, amount, price):
+    try:
+        order = ex.create_order(symbol, 'limit', side, amount, price)
+        return order
+    except Exception as e:
+        logging.error(f"Trade execution failed: {e}")
+        return None
+
+# ------------------------------------------
 # CUSTOM STYLE — GOLDEN TRISHUL BACKGROUND
 # ------------------------------------------
 st.markdown("""
@@ -155,11 +187,11 @@ col1, col2 = st.columns(2)
 with col1:
     buy_ex = st.selectbox("Buy Exchange", EXCHANGES, index=0)
     buy_api_key = st.text_input(f"{buy_ex.capitalize()} API Key", type="password", key="buy_key")
-    buy_secret_key = st.text_input(f"{buy_ex.capitalize()} Secret", type="password", key="buy_secret_key")
+    buy_secret = st.text_input(f"{buy_ex.capitalize()} Secret Key", type="password", key="buy_secret")
 with col2:
     sell_ex = st.selectbox("Sell Exchange", EXCHANGES, index=1)
     sell_api_key = st.text_input(f"{sell_ex.capitalize()} API Key", type="password", key="sell_key")
-    sell_secret_key = st.text_input(f"{sell_ex.capitalize()} Secret", type="password", key="sell_secret_key")
+    sell_secret = st.text_input(f"{sell_ex.capitalize()} Secret Key", type="password", key="sell_secret")
 
 symbol = st.text_input("Crypto Pair (e.g., BTC/USDT, ETH/BTC)", value="BTC/USDT")
 investment = st.number_input("Investment ($)", min_value=1.0, value=1000.0, step=1.0)
@@ -257,40 +289,8 @@ st.subheader("📜 Recent Trades History")
 if st.session_state.log:
     st.write("\n".join(st.session_state.log[-20:]))
 else:
-    st.info("No trades yet.Click  ▶️ Perform to start monitoring.")
+    st.info("No trades yet. Click ▶️ Perform to start monitoring.")
 st.markdown('</div>', unsafe_allow_html=True)
-
-# ------------------------------------------
-# EXCHANGE HELPERS
-# ------------------------------------------
-def create_exchange(name, api_key=None, secret=None):
-    try:
-        config = {"enableRateLimit": True}
-        if api_key and secret:
-            config.update({"apiKey": api_key, "secret": secret})
-        ex = getattr(ccxt, name)(config)
-        ex.load_markets()
-        return ex
-    except Exception as e:
-        logging.error(f"Failed to initialize {name}: {e}")
-        st.warning(f"{name.capitalize()} unavailable. Check API keys or try another exchange.")
-        return None
-
-def get_price(ex, sym):
-    try:
-        t = ex.fetch_ticker(sym)
-        return t["last"]
-    except Exception as e:
-        logging.error(f"Failed to fetch price for {sym} on {ex.id}: {e}")
-        return None
-
-def execute_trade(ex, side, symbol, amount, price):
-    try:
-        order = ex.create_order(symbol, 'limit', side, amount, price)
-        return order
-    except Exception as e:
-        logging.error(f"Trade execution failed: {e}")
-        return None
 
 # ------------------------------------------
 # MAIN LOOP TRIGGER
