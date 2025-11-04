@@ -14,53 +14,80 @@ CRYPTOS = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "ADA/USDT", "XRP/USDT
 INVESTMENTS = [100, 500, 1000, 5000, 10000]
 
 # ------------------------------------------
-# STYLING
+# STYLING (Midnight + Golden Trishul)
 # ------------------------------------------
 st.markdown("""
 <style>
 body {
-    background: linear-gradient(180deg, #fffdf3 0%, #f5f3eb 100%);
-    color: black;
+    background: radial-gradient(circle at top center, #0b0c10 0%, #000000 80%);
+    color: #f1f1f1;
     font-family: "Segoe UI", sans-serif;
 }
+
 div[data-testid="stAppViewContainer"] {
-    background: radial-gradient(circle at center, #fffdf3, #f5f3eb);
+    background: radial-gradient(circle at center, #0b0c10, #000000);
+    overflow: hidden;
 }
+
+/* Animated rotating Trishul */
 div[data-testid="stAppViewContainer"]::before {
     content: "";
     background: url('https://upload.wikimedia.org/wikipedia/commons/4/4b/Trishul_symbol_gold.png') no-repeat center;
-    background-size: 480px 480px;
-    opacity: 0.07;
+    background-size: 420px 420px;
+    opacity: 0.08;
     position: fixed;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) rotate(0deg);
     width: 100%;
     height: 100%;
     z-index: 0;
+    animation: spin 60s linear infinite;
 }
+@keyframes spin {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
 h1 {
-    color: #b8860b;
+    color: #ffd700;
     text-align: center;
-    text-shadow: 0px 0px 20px rgba(184,134,11,0.6);
+    text-shadow: 0px 0px 25px rgba(255, 215, 0, 0.8);
     font-weight: 800;
+    letter-spacing: 1px;
 }
 .block {
-    background: rgba(255,255,255,0.85);
-    border-radius: 20px;
+    background: rgba(10,10,10,0.6);
+    border-radius: 18px;
     padding: 20px;
-    box-shadow: 0 0 15px rgba(0,0,0,0.15);
+    box-shadow: 0 0 20px rgba(255,215,0,0.1);
     z-index: 1;
+    border: 1px solid rgba(255,215,0,0.15);
 }
 .metric-green {
     background-color: rgba(0,255,0,0.15);
     padding: 10px;
     border-radius: 10px;
+    border: 1px solid rgba(0,255,0,0.25);
 }
 .metric-red {
     background-color: rgba(255,0,0,0.15);
     padding: 10px;
     border-radius: 10px;
+    border: 1px solid rgba(255,0,0,0.25);
+}
+.stButton>button {
+    background: linear-gradient(90deg, #b8860b, #ffcc00);
+    color: black;
+    border: none;
+    border-radius: 12px;
+    font-weight: bold;
+    padding: 10px 20px;
+    transition: all 0.3s ease-in-out;
+}
+.stButton>button:hover {
+    background: linear-gradient(90deg, #ffcc00, #ffd700);
+    transform: scale(1.05);
 }
 </style>
 """, unsafe_allow_html=True)
@@ -105,7 +132,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 log_area = st.empty()
 
 # ------------------------------------------
-# FUNCTIONS
+# HELPERS
 # ------------------------------------------
 def create_exchange(name, key=None, secret=None):
     try:
@@ -115,7 +142,7 @@ def create_exchange(name, key=None, secret=None):
         ex = getattr(ccxt, name)(params)
         ex.load_markets()
         return ex
-    except Exception as e:
+    except Exception:
         st.warning(f"{name.capitalize()} unavailable — switching automatically if possible.")
         return None
 
@@ -128,18 +155,16 @@ def get_price(ex, sym):
 
 def get_fee_percent(ex, sym):
     try:
-        # Try dynamic fetch
         f = ex.fetch_trading_fee(sym)
         maker = f.get("maker", 0.001)
         taker = f.get("taker", 0.001)
     except Exception:
-        # Fallback to exchange’s default fee data
         maker = getattr(ex, "fees", {}).get("trading", {}).get("maker", 0.001)
         taker = getattr(ex, "fees", {}).get("trading", {}).get("taker", 0.001)
     return maker * 100, taker * 100  # convert to %
 
 # ------------------------------------------
-# MAIN
+# MAIN LOOP
 # ------------------------------------------
 if perform:
     st.session_state.armed = True
