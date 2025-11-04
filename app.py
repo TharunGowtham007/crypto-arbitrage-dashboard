@@ -4,6 +4,7 @@ import time
 import logging
 import datetime
 from decimal import Decimal
+import plotly.graph_objects as go
 
 # ------------------------------------------
 # BASIC CONFIG
@@ -117,6 +118,14 @@ h1 {
 h2, h3, h4 {
     color: #fff;
 }
+
+/* Chart container */
+.chart-container {
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+    padding: 10px;
+    margin-top: 10px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -134,6 +143,8 @@ if "stop" not in st.session_state:
     st.session_state.stop = False
 if "log" not in st.session_state:
     st.session_state.log = []
+if "price_history" not in st.session_state:
+    st.session_state.price_history = {"buy": [], "sell": [], "diff": []}
 
 # ------------------------------------------
 # INPUT UI
@@ -164,7 +175,96 @@ with colB:
 sim = st.checkbox("Simulation Mode", True)
 st.markdown('</div>', unsafe_allow_html=True)
 
-log_area = st.empty()
+# ------------------------------------------
+# LIVE MONITORING SECTION
+# ------------------------------------------
+st.markdown('<div class="block">', unsafe_allow_html=True)
+st.subheader("📊 Live Monitoring")
+
+if st.session_state.armed and not st.session_state.stop:
+    buy = create_exchange(buy_ex, buy_api_key, buy_secret)
+    sell = create_exchange(sell_ex, sell_api_key, sell_secret)
+
+    if not buy or not sell:
+        st.error("Exchange initialization failed. Ensure API keys are correct or switch exchanges.")
+    else:
+        if symbol not in buy.markets or symbol not in sell.markets:
+            st.error(f"Pair '{symbol}' not available on one or both exchanges.")
+            st.session_state.armed = False
+        else:
+            pb = get_price(buy, symbol)
+            ps = get_price(sell, symbol)
+            if pb and ps:
+                diff = ((ps - pb) / pb) * 100
+                profit = investment * (diff / 100)
+                
+                # Update history for chart
+                st.session_state.price_history["buy"].append(pb)
+                st.session_state.price_history["sell"].append(ps)
+                st.session_state.price_history["diff"].append(diff)
+                if len(st.session_state.price_history["buy"]) > 50:  # Keep last 50 points
+                    st.session_state.price_history["buy"].pop(0)
+                    st.session_state.price_history["sell"].pop(0)
+                    st.session_state.price_history["diff"].pop(0)
+                
+                colx, coly, colz = st.columns(3)
+                with colx:
+                    st.markdown(f"<div class='metric-green'><h4>Buy @ {buy_ex.capitalize()}</h4><p>${pb:.2f}</p></div>", unsafe_allow_html=True)
+                with coly:
+                    st.markdown(f"<div class='metric-red'><h4>Sell @ {sell_ex.capitalize()}</h4><p>${ps:.2f}</p></div>", unsafe_allow_html=True)
+                with colz:
+                    st.markdown(f"<div class='metric-profit'><h4>Profit</h4><p>${profit:.2f} ({diff:.2f}%)</p></div>", unsafe_allow_html=True)
+
+                # Chart
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(y=st.session_state.price_history["buy"], mode='lines', name='Buy Price', line=dict(color='green')))
+                fig.add_trace(go.Scatter(y=st.session_state.price_history["sell"], mode='lines', name='Sell Price', line=dict(color='red')))
+                fig.add_trace(go.Scatter(y=st.session_state.price_history["diff"], mode='lines', name='Diff %', line=dict(color='gold'), yaxis='y2'))
+                fig.update_layout(
+                    title="Price & Diff History",
+                    xaxis_title="Time",
+                    yaxis_title="Price ($)",
+                    yaxis2=dict(title="Diff (%)", overlaying='y', side='right'),
+                    template="plotly_dark"
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+                if diff >= threshold:
+                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    if sim:
+                        st.success(f"🚀 PROFIT DETECTED (SIMULATION): +${profit:.2f} ({diff:.2f}%) — simulated trade executed.")
+                        st.session_state.log.append(f"{timestamp}: Simulated trade: +${profit:.2f} ({diff:.2f}%)")
+                    else:
+                        amount = investment / pb
+                        buy_order = execute_trade(buy, 'buy', symbol, amount, pb)
+                        sell_order = execute_trade(sell, 'sell', symbol, amount, ps)
+                        if buy_order and sell_order:
+                            st.success(f"🚀 PROFIT DETECTED: Real trade executed! +${profit:.2f} ({diff:.2f}%)")
+                            st.session_state.log.append(f"{timestamp}: Real trade executed: +${profit:.2f} ({diff:.2f}%)")
+                        else:
+                            st.error("Real trade failed. Check balances and permissions.")
+                    st.session_state.armed = False
+                else:
+                    st.info(f"Monitoring... Diff: {diff:.2f}% (< {threshold}%)")
+            else:
+                st.warning("Price unavailable on one or both exchanges.")
+    time.sleep(3)
+    st.rerun()
+else:
+    st.info("Click ▶️ Perform to start monitoring.")
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+# ------------------------------------------
+# TRADE HISTORY SECTION
+# ------------------------------------------
+st.markdown('<div class="block">', unsafe_allow_html=True)
+st.subheader("📜 Recent Trades History")
+if st.session_state.log:
+    st.write("\n".join(st.session_state.log[-20:]))
+else:
+    st.info("No trades yet. Click ▶️ Perform to start monitoring.")
+st.markdown('</div>', unsafe_allow_html=True)
 
 # ------------------------------------------
 # EXCHANGE HELPERS
@@ -199,7 +299,7 @@ def execute_trade(ex, side, symbol, amount, price):
         return None
 
 # ------------------------------------------
-# MAIN LOOP
+# MAIN LOOP TRIGGER
 # ------------------------------------------
 if perform:
     st.session_state.armed = True
@@ -210,60 +310,3 @@ if stop:
     st.session_state.armed = False
     st.session_state.stop = True
     st.warning("⛔ Bot stopped manually.")
-
-if st.session_state.armed and not st.session_state.stop:
-    buy = create_exchange(buy_ex, buy_api_key, buy_secret)
-    sell = create_exchange(sell_ex, sell_api_key, sell_secret)
-
-    if not buy or not sell:
-        st.error("Exchange initialization failed. Ensure API keys are correct or switch exchanges.")
-    else:
-        if symbol not in buy.markets or symbol not in sell.markets:
-            st.error(f"Pair '{symbol}' not available on one or both exchanges.")
-            st.session_state.armed = False
-        else:
-            pb = get_price(buy, symbol)
-            ps = get_price(sell, symbol)
-            if pb and ps:
-                diff = ((ps - pb) / pb) * 100
-                profit = investment * (diff / 100)
-                colx, coly, colz = st.columns(3)
-                with colx:
-                    st.markdown(f"<div class='metric-green'><h4>Buy @ {buy_ex.capitalize()}</h4><p>${pb:.2f}</p></div>", unsafe_allow_html=True)
-                with coly:
-                    st.markdown(f"<div class='metric-red'><h4>Sell @ {sell_ex.capitalize()}</h4><p>${ps:.2f}</p></div>", unsafe_allow_html=True)
-                with colz:
-                    st.markdown(f"<div class='metric-profit'><h4>Profit</h4><p>${profit:.2f} ({diff:.2f}%)</p></div>", unsafe_allow_html=True)
-
-                if diff >= threshold:
-                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    if sim:
-                        st.success(f"🚀 PROFIT DETECTED (SIMULATION): +${profit:.2f} ({diff:.2f}%) — simulated trade executed.")
-                        st.session_state.log.append(f"{timestamp}: Simulated trade: +${profit:.2f} ({diff:.2f}%)")
-                    else:
-                        amount = investment / pb
-                        buy_order = execute_trade(buy, 'buy', symbol, amount, pb)
-                        sell_order = execute_trade(sell, 'sell', symbol, amount, ps)
-                        if buy_order and sell_order:
-                            st.success(f"🚀 PROFIT DETECTED: Real trade executed! +${profit:.2f} ({diff:.2f}%)")
-                            st.session_state.log.append(f"{timestamp}: Real trade executed: +${profit:.2f} ({diff:.2f}%)")
-                        else:
-                            st.error("Real trade failed. Check balances and permissions.")
-                    st.session_state.armed = False
-                else:
-                    st.info(f"Monitoring... Diff: {diff:.2f}% (< {threshold}%)")
-            else:
-                st.warning("Price unavailable on one or both exchanges.")
-    time.sleep(3)
-    st.rerun()
-
-# ------------------------------------------
-# TRADE HISTORY
-# ------------------------------------------
-st.markdown('<div class="block">', unsafe_allow_html=True)
-st.subheader("📜 Recent Trades History")
-if st.session_state.log:
-    st.write("\n".join(st.session_state.log[-20:]))
-else:
-    st.info("No trades yet. Click ▶️ Perform to start monitoring.")
-st.markdown('</div>', unsafe_allow_html=True)
