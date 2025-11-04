@@ -13,8 +13,17 @@ st.set_page_config(page_title="Arbitrage Dashboard", layout="wide")
 
 EXCHANGES = ccxt.exchanges
 
+# Common crypto pairs for selectbox
+COMMON_CRYPTOS = [
+    "BTC/USDT", "ETH/USDT", "BNB/USDT", "ADA/USDT", "SOL/USDT", 
+    "XRP/USDT", "DOT/USDT", "DOGE/USDT", "LTC/USDT", "LINK/USDT",
+    "MATIC/USDT", "AVAX/USDT", "UNI/USDT", "ALGO/USDT", "VET/USDT",
+    "ICP/USDT", "FIL/USDT", "TRX/USDT", "ETC/USDT", "XLM/USDT",
+    "Custom"  # Add this for custom input
+]
+
 # ------------------------------------------
-# EXCHANGE HELPERS (MOVED TO TOP)
+# EXCHANGE HELPERS
 # ------------------------------------------
 def create_exchange(name, api_key=None, secret=None):
     try:
@@ -46,7 +55,7 @@ def execute_trade(ex, side, symbol, amount, price):
         return None
 
 # ------------------------------------------
-# CUSTOM STYLE — GOLDEN TRISHUL BACKGROUND
+# CUSTOM STYLE — ENHANCED GOLDEN TRISHUL BACKGROUND & MATURE GRAPHICS
 # ------------------------------------------
 st.markdown("""
 <style>
@@ -55,15 +64,22 @@ body {
     color: #ffffff;
     font-family: "Segoe UI", sans-serif;
     overflow-x: hidden;
+    animation: fadeIn 1s ease-in;
 }
 
-/* Trishul image faint golden background */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Trishul image faint golden background with glow */
 div[data-testid="stAppViewContainer"] {
     background: url('https://upload.wikimedia.org/wikipedia/commons/3/3b/Trishul_symbol.svg') no-repeat center center fixed;
     background-size: 600px 600px;
     background-blend-mode: soft-light;
     opacity: 0.98;
     background-color: #000000;
+    box-shadow: inset 0 0 100px rgba(255,215,0,0.1);
 }
 
 div[data-testid="stAppViewContainer"]::before {
@@ -79,83 +95,133 @@ div[data-testid="stAppViewContainer"]::before {
     height: 100%;
     z-index: 0;
     pointer-events: none;
+    filter: drop-shadow(0 0 20px rgba(255,215,0,0.3));
 }
 
-/* Title styling */
+/* Title styling with enhanced glow */
 h1 {
     color: #FFD700;
     text-align: center;
     font-weight: 800;
-    text-shadow: 0 0 25px rgba(255,215,0,0.5);
+    text-shadow: 0 0 30px rgba(255,215,0,0.8), 0 0 60px rgba(255,215,0,0.4);
     margin-bottom: 10px;
+    animation: pulse 3s infinite;
 }
 
-/* Panels */
+@keyframes pulse {
+    0%, 100% { text-shadow: 0 0 30px rgba(255,215,0,0.8); }
+    50% { text-shadow: 0 0 50px rgba(255,215,0,1); }
+}
+
+/* Panels with fade-in and better shadows */
 .block {
     background: rgba(255,255,255,0.08);
     border-radius: 15px;
     padding: 20px;
-    box-shadow: 0 0 15px rgba(255,215,0,0.15);
+    box-shadow: 0 0 20px rgba(255,215,0,0.2), 0 4px 15px rgba(0,0,0,0.3);
     margin-bottom: 25px;
     z-index: 1;
+    animation: slideIn 0.5s ease-out;
 }
 
-/* Metric cards */
+@keyframes slideIn {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* Metric cards with glowing borders and hover effects */
 .metric-green {
-    background-color: rgba(0,255,0,0.15);
+    background: linear-gradient(135deg, rgba(0,255,0,0.15), rgba(0,255,0,0.05));
     padding: 15px;
     border-radius: 10px;
     border-left: 4px solid #00ff00;
+    box-shadow: 0 0 10px rgba(0,255,0,0.3);
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.metric-green:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 20px rgba(0,255,0,0.5);
 }
 
 .metric-red {
-    background-color: rgba(255,0,0,0.15);
+    background: linear-gradient(135deg, rgba(255,0,0,0.15), rgba(255,0,0,0.05));
     padding: 15px;
     border-radius: 10px;
     border-left: 4px solid #ff0000;
+    box-shadow: 0 0 10px rgba(255,0,0,0.3);
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.metric-red:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 20px rgba(255,0,0,0.5);
 }
 
 .metric-profit {
-    background-color: rgba(255,215,0,0.1);
+    background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,215,0,0.05));
     padding: 15px;
     border-radius: 10px;
     border-left: 4px solid #FFD700;
-    box-shadow: 0 0 15px rgba(255,215,0,0.2);
+    box-shadow: 0 0 15px rgba(255,215,0,0.4);
+    transition: transform 0.3s, box-shadow 0.3s;
 }
 
-/* Buttons */
+.metric-profit:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 25px rgba(255,215,0,0.6);
+}
+
+/* Buttons with gradient and hover animations */
 .stButton>button {
-    background: linear-gradient(to right, #FFD700, #b8860b);
+    background: linear-gradient(135deg, #FFD700, #b8860b);
     color: #000;
     border: none;
     border-radius: 8px;
     padding: 12px 22px;
     font-size: 16px;
     font-weight: 600;
-    transition: 0.3s;
-}
-.stButton>button:hover {
-    background: linear-gradient(to right, #ffcc33, #d4af37);
-    transform: scale(1.04);
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(255,215,0,0.3);
 }
 
-/* Inputs */
+.stButton>button:hover {
+    background: linear-gradient(135deg, #ffcc33, #d4af37);
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255,215,0,0.5);
+}
+
+/* Inputs with subtle glow */
 .stSelectbox, .stTextInput, .stNumberInput {
     border-radius: 5px;
     background-color: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,215,0,0.2);
+    transition: border-color 0.3s;
 }
 
-/* Subheaders */
+.stSelectbox:hover, .stTextInput:hover, .stNumberInput:hover {
+    border-color: rgba(255,215,0,0.5);
+}
+
+/* Subheaders with icons */
 h2, h3, h4 {
     color: #fff;
+    display: flex;
+    align-items: center;
 }
 
-/* Chart container */
+h2::before, h3::before, h4::before {
+    content: "⚡";
+    margin-right: 10px;
+}
+
+/* Chart container with enhanced styling */
 .chart-container {
     background: rgba(255,255,255,0.05);
     border-radius: 10px;
     padding: 10px;
     margin-top: 10px;
+    box-shadow: 0 0 10px rgba(255,215,0,0.2);
 }
 </style>
 """, unsafe_allow_html=True)
@@ -193,7 +259,13 @@ with col2:
     sell_api_key = st.text_input(f"{sell_ex.capitalize()} API Key", type="password", key="sell_key")
     sell_secret = st.text_input(f"{sell_ex.capitalize()} Secret Key", type="password", key="sell_secret")
 
-symbol = st.text_input("Crypto Pair (e.g., BTC/USDT, ETH/BTC)", value="BTC/USDT")
+# Crypto pair selection with selectbox and custom option
+symbol_choice = st.selectbox("Crypto Pair", COMMON_CRYPTOS, index=0)
+if symbol_choice == "Custom":
+    symbol = st.text_input("Enter Custom Pair (e.g., BTC/USDT, ETH/BTC)", value="BTC/USDT")
+else:
+    symbol = symbol_choice
+
 investment = st.number_input("Investment ($)", min_value=1.0, value=1000.0, step=1.0)
 threshold = st.slider("Profit Threshold (%)", 0.1, 10.0, 1.0)
 
