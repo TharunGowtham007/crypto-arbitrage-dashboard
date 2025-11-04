@@ -2,84 +2,34 @@ import ccxt
 import streamlit as st
 import time
 import logging
-import datetime
-import pandas as pd
 
 # ------------------------------------------
-# BASIC CONFIG
+# CONFIG
 # ------------------------------------------
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 st.set_page_config(page_title="Arbitrage Dashboard", layout="wide")
 
-EXCHANGES = ccxt.exchanges
-
-COMMON_CRYPTOS = [
-    "BTC/USDT", "ETH/USDT", "BNB/USDT", "ADA/USDT", "SOL/USDT",
-    "XRP/USDT", "DOT/USDT", "DOGE/USDT", "LTC/USDT", "LINK/USDT",
-    "MATIC/USDT", "AVAX/USDT", "UNI/USDT", "ALGO/USDT", "VET/USDT",
-    "ICP/USDT", "FIL/USDT", "TRX/USDT", "ETC/USDT", "XLM/USDT",
-    "Custom"
-]
+EXCHANGES = ["binance", "kucoin", "kraken", "coinbase", "okx", "bitfinex", "bybit"]
+CRYPTOS = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "ADA/USDT", "XRP/USDT"]
+INVESTMENTS = [100, 500, 1000, 5000, 10000]
 
 # ------------------------------------------
-# EXCHANGE HELPERS
-# ------------------------------------------
-def create_exchange(name, api_key=None, secret=None):
-    try:
-        config = {"enableRateLimit": True}
-        if api_key and secret:
-            config.update({"apiKey": api_key, "secret": secret})
-        ex = getattr(ccxt, name)(config)
-        ex.load_markets()
-        return ex
-    except Exception as e:
-        logging.error(f"Failed to initialize {name}: {e}")
-        st.warning(f"{name.capitalize()} unavailable. Check API keys or try another exchange.")
-        return None
-
-
-def get_price(ex, sym):
-    try:
-        t = ex.fetch_ticker(sym)
-        return t["last"]
-    except Exception as e:
-        logging.error(f"Failed to fetch price for {sym} on {ex.id}: {e}")
-        return None
-
-
-def execute_trade(ex, side, symbol, amount, price):
-    try:
-        order = ex.create_order(symbol, 'limit', side, amount, price)
-        return order
-    except Exception as e:
-        logging.error(f"Trade execution failed: {e}")
-        return None
-
-
-# ------------------------------------------
-# CUSTOM STYLE — MINIMAL & MATURE GOLDEN THEME
+# STYLING
 # ------------------------------------------
 st.markdown("""
 <style>
 body {
-    background-color: #0a0a0a;
-    color: #e6e6e6;
+    background: linear-gradient(180deg, #fffdf3 0%, #f5f3eb 100%);
+    color: black;
     font-family: "Segoe UI", sans-serif;
 }
-
 div[data-testid="stAppViewContainer"] {
-    background: #0a0a0a url('https://upload.wikimedia.org/wikipedia/commons/3/3b/Trishul_symbol.svg') 
-                no-repeat center center fixed;
-    background-size: 650px 650px;
-    background-blend-mode: soft-light;
-    opacity: 0.98;
+    background: radial-gradient(circle at center, #fffdf3, #f5f3eb);
 }
-
 div[data-testid="stAppViewContainer"]::before {
     content: "";
-    background: url('https://upload.wikimedia.org/wikipedia/commons/3/3b/Trishul_symbol.svg') 
-                no-repeat center center;
-    background-size: 650px 650px;
+    background: url('https://upload.wikimedia.org/wikipedia/commons/4/4b/Trishul_symbol_gold.png') no-repeat center;
+    background-size: 480px 480px;
     opacity: 0.07;
     position: fixed;
     top: 50%;
@@ -88,89 +38,32 @@ div[data-testid="stAppViewContainer"]::before {
     width: 100%;
     height: 100%;
     z-index: 0;
-    pointer-events: none;
-    filter: drop-shadow(0 0 15px rgba(255,215,0,0.3));
 }
-
-/* Title */
 h1 {
-    color: #FFD700;
+    color: #b8860b;
     text-align: center;
+    text-shadow: 0px 0px 20px rgba(184,134,11,0.6);
     font-weight: 800;
-    text-shadow: 0 0 30px rgba(255,215,0,0.4);
-    margin-bottom: 15px;
 }
-
-/* Panels */
 .block {
-    background: rgba(255,255,255,0.05);
-    border-radius: 15px;
+    background: rgba(255,255,255,0.85);
+    border-radius: 20px;
     padding: 20px;
-    box-shadow: 0 0 20px rgba(255,215,0,0.15);
-    margin-bottom: 25px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.15);
     z-index: 1;
 }
-
-/* Metric cards */
 .metric-green {
-    background: linear-gradient(135deg, rgba(0,255,0,0.1), rgba(0,255,0,0.05));
-    padding: 15px;
-    border-radius: 10px;
-    border-left: 4px solid #00ff00;
-    box-shadow: 0 0 10px rgba(0,255,0,0.2);
-}
-
-.metric-red {
-    background: linear-gradient(135deg, rgba(255,0,0,0.1), rgba(255,0,0,0.05));
-    padding: 15px;
-    border-radius: 10px;
-    border-left: 4px solid #ff0000;
-    box-shadow: 0 0 10px rgba(255,0,0,0.2);
-}
-
-.metric-profit {
-    background: linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,215,0,0.03));
-    padding: 15px;
-    border-radius: 10px;
-    border-left: 4px solid #FFD700;
-    box-shadow: 0 0 10px rgba(255,215,0,0.25);
-}
-
-/* Buttons */
-.stButton>button {
-    background: linear-gradient(135deg, #FFD700, #b8860b);
-    color: #000;
-    border: none;
-    border-radius: 8px;
-    padding: 12px 22px;
-    font-size: 16px;
-    font-weight: 600;
-    box-shadow: 0 4px 10px rgba(255,215,0,0.3);
-    transition: all 0.3s ease;
-}
-
-.stButton>button:hover {
-    background: linear-gradient(135deg, #ffcc33, #d4af37);
-    transform: scale(1.03);
-    box-shadow: 0 6px 20px rgba(255,215,0,0.5);
-}
-
-/* Inputs */
-.stSelectbox, .stTextInput, .stNumberInput {
-    border-radius: 5px;
-    background-color: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,215,0,0.2);
-}
-
-.chart-container {
-    background: rgba(255,255,255,0.05);
-    border-radius: 10px;
+    background-color: rgba(0,255,0,0.15);
     padding: 10px;
-    box-shadow: 0 0 10px rgba(255,215,0,0.15);
+    border-radius: 10px;
+}
+.metric-red {
+    background-color: rgba(255,0,0,0.15);
+    padding: 10px;
+    border-radius: 10px;
 }
 </style>
 """, unsafe_allow_html=True)
-
 
 # ------------------------------------------
 # HEADER
@@ -178,7 +71,7 @@ h1 {
 st.title("Arbitrage Dashboard")
 
 # ------------------------------------------
-# SESSION
+# SESSION STATE
 # ------------------------------------------
 if "armed" not in st.session_state:
     st.session_state.armed = False
@@ -186,135 +79,124 @@ if "stop" not in st.session_state:
     st.session_state.stop = False
 if "log" not in st.session_state:
     st.session_state.log = []
-if "price_history" not in st.session_state:
-    st.session_state.price_history = {"buy": [], "sell": [], "diff": []}
-
 
 # ------------------------------------------
-# INPUT UI
+# INPUT
 # ------------------------------------------
 st.markdown('<div class="block">', unsafe_allow_html=True)
-st.subheader("Configuration")
-
 col1, col2 = st.columns(2)
 with col1:
     buy_ex = st.selectbox("Buy Exchange", EXCHANGES, index=0)
-    buy_api_key = st.text_input(f"{buy_ex.capitalize()} API Key", type="password", key="buy_key")
-    buy_secret = st.text_input(f"{buy_ex.capitalize()} Secret Key", type="password", key="buy_secret")
 with col2:
     sell_ex = st.selectbox("Sell Exchange", EXCHANGES, index=1)
-    sell_api_key = st.text_input(f"{sell_ex.capitalize()} API Key", type="password", key="sell_key")
-    sell_secret = st.text_input(f"{sell_ex.capitalize()} Secret Key", type="password", key="sell_secret")
 
-symbol_choice = st.selectbox("Crypto Pair", COMMON_CRYPTOS, index=0)
-symbol = st.text_input("Enter Custom Pair", "BTC/USDT") if symbol_choice == "Custom" else symbol_choice
-
-investment = st.number_input("Investment ($)", min_value=1.0, value=1000.0, step=1.0)
+symbol = st.selectbox("Crypto Pair", CRYPTOS, index=0)
+investment = st.selectbox("Investment ($)", INVESTMENTS, index=2)
 threshold = st.slider("Profit Threshold (%)", 0.1, 10.0, 1.0)
-
+api_key = st.text_input("API Key (optional)", type="password")
+api_secret = st.text_input("API Secret (optional)", type="password")
 colA, colB = st.columns(2)
 with colA:
-    perform = st.button("Perform")
+    perform = st.button("▶️ Perform")
 with colB:
-    stop = st.button("Stop")
-
+    stop = st.button("⛔ Stop")
 sim = st.checkbox("Simulation Mode", True)
 st.markdown('</div>', unsafe_allow_html=True)
-
-
-# ------------------------------------------
-# LIVE MONITORING
-# ------------------------------------------
-st.markdown('<div class="block">', unsafe_allow_html=True)
-st.subheader("Live Monitoring")
-
-if st.session_state.armed and not st.session_state.stop:
-    buy = create_exchange(buy_ex, buy_api_key, buy_secret)
-    sell = create_exchange(sell_ex, sell_api_key, sell_secret)
-
-    if not buy or not sell:
-        st.error("Exchange initialization failed. Ensure API keys are correct or switch exchanges.")
-    else:
-        if symbol not in buy.markets or symbol not in sell.markets:
-            st.error(f"Pair '{symbol}' not available on one or both exchanges.")
-            st.session_state.armed = False
-        else:
-            pb = get_price(buy, symbol)
-            ps = get_price(sell, symbol)
-            if pb and ps:
-                diff = ((ps - pb) / pb) * 100
-                profit = investment * (diff / 100)
-
-                st.session_state.price_history["buy"].append(pb)
-                st.session_state.price_history["sell"].append(ps)
-                st.session_state.price_history["diff"].append(diff)
-                if len(st.session_state.price_history["buy"]) > 50:
-                    for k in ["buy", "sell", "diff"]:
-                        st.session_state.price_history[k].pop(0)
-
-                colx, coly, colz = st.columns(3)
-                with colx:
-                    st.markdown(f"<div class='metric-green'><h4>Buy @ {buy_ex.capitalize()}</h4><p>${pb:.2f}</p></div>", unsafe_allow_html=True)
-                with coly:
-                    st.markdown(f"<div class='metric-red'><h4>Sell @ {sell_ex.capitalize()}</h4><p>${ps:.2f}</p></div>", unsafe_allow_html=True)
-                with colz:
-                    st.markdown(f"<div class='metric-profit'><h4>Profit</h4><p>${profit:.2f} ({diff:.2f}%)</p></div>", unsafe_allow_html=True)
-
-                if st.session_state.price_history["buy"]:
-                    df = pd.DataFrame({
-                        "Buy Price": st.session_state.price_history["buy"],
-                        "Sell Price": st.session_state.price_history["sell"],
-                        "Diff %": st.session_state.price_history["diff"]
-                    })
-                    st.line_chart(df, use_container_width=True)
-
-                if diff >= threshold:
-                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    if sim:
-                        st.success(f"Profit detected (Simulation): +${profit:.2f} ({diff:.2f}%) — simulated trade executed.")
-                        st.session_state.log.append(f"{timestamp}: Simulated trade: +${profit:.2f} ({diff:.2f}%)")
-                    else:
-                        amount = investment / pb
-                        buy_order = execute_trade(buy, 'buy', symbol, amount, pb)
-                        sell_order = execute_trade(sell, 'sell', symbol, amount, ps)
-                        if buy_order and sell_order:
-                            st.success(f"Profit detected: Real trade executed! +${profit:.2f} ({diff:.2f}%)")
-                            st.session_state.log.append(f"{timestamp}: Real trade executed: +${profit:.2f} ({diff:.2f}%)")
-                        else:
-                            st.error("Real trade failed. Check balances and permissions.")
-                    st.session_state.armed = False
-                else:
-                    st.info(f"Monitoring... Diff: {diff:.2f}% (< {threshold}%)")
-            else:
-                st.warning("Price unavailable on one or both exchanges.")
-    time.sleep(3)
-    st.rerun()
-else:
-    st.info("Click Perform to start monitoring.")
-st.markdown('</div>', unsafe_allow_html=True)
-
+log_area = st.empty()
 
 # ------------------------------------------
-# TRADE HISTORY
+# FUNCTIONS
 # ------------------------------------------
-st.markdown('<div class="block">', unsafe_allow_html=True)
-st.subheader("Recent Trades History")
-if st.session_state.log:
-    st.write("\n".join(st.session_state.log[-20:]))
-else:
-    st.info("No trades yet. Click Perform to start monitoring.")
-st.markdown('</div>', unsafe_allow_html=True)
+def create_exchange(name, key=None, secret=None):
+    try:
+        params = {"enableRateLimit": True}
+        if key and secret:
+            params.update({"apiKey": key, "secret": secret})
+        ex = getattr(ccxt, name)(params)
+        ex.load_markets()
+        return ex
+    except Exception as e:
+        st.warning(f"{name.capitalize()} unavailable — switching automatically if possible.")
+        return None
 
+def get_price(ex, sym):
+    try:
+        t = ex.fetch_ticker(sym)
+        return t["last"]
+    except Exception:
+        return None
+
+def get_fee_percent(ex, sym):
+    try:
+        # Try dynamic fetch
+        f = ex.fetch_trading_fee(sym)
+        maker = f.get("maker", 0.001)
+        taker = f.get("taker", 0.001)
+    except Exception:
+        # Fallback to exchange’s default fee data
+        maker = getattr(ex, "fees", {}).get("trading", {}).get("maker", 0.001)
+        taker = getattr(ex, "fees", {}).get("trading", {}).get("taker", 0.001)
+    return maker * 100, taker * 100  # convert to %
 
 # ------------------------------------------
-# TRIGGER
+# MAIN
 # ------------------------------------------
 if perform:
     st.session_state.armed = True
     st.session_state.stop = False
-    st.success("Bot armed — scanning for profitable signals...")
+    st.success("Bot armed ✅ — waiting for profitable signal...")
 
 if stop:
     st.session_state.armed = False
     st.session_state.stop = True
-    st.warning("Bot stopped manually.")
+    st.warning("Bot stopped ⛔")
+
+if st.session_state.armed and not st.session_state.stop:
+    buy = create_exchange(buy_ex, api_key, api_secret)
+    sell = create_exchange(sell_ex, api_key, api_secret)
+
+    if not buy or not sell:
+        st.error("Exchange initialization failed. Try switching to different exchanges.")
+    else:
+        pb = get_price(buy, symbol)
+        ps = get_price(sell, symbol)
+        if pb and ps:
+            buy_fee, _ = get_fee_percent(buy, symbol)
+            _, sell_fee = get_fee_percent(sell, symbol)
+            total_fee = buy_fee + sell_fee
+            diff = ((ps - pb) / pb) * 100
+            net_profit = diff - total_fee
+
+            colx, coly, colz = st.columns(3)
+            with colx:
+                st.markdown(f"<div class='metric-green'><h3>Buy @ {buy_ex.capitalize()}</h3><p>${pb:.2f}</p></div>", unsafe_allow_html=True)
+            with coly:
+                st.markdown(f"<div class='metric-red'><h3>Sell @ {sell_ex.capitalize()}</h3><p>${ps:.2f}</p></div>", unsafe_allow_html=True)
+            with colz:
+                st.metric("Net Profit (after fees)", f"{net_profit:.2f}%")
+
+            if net_profit >= threshold:
+                profit = investment * (net_profit / 100)
+                st.success(f"🚀 REAL PROFIT DETECTED: +${profit:.2f} ({net_profit:.2f}%) — executing trade...")
+                st.session_state.log.append(f"Trade executed ✅: +${profit:.2f} ({net_profit:.2f}%) after fees")
+                st.session_state.armed = False
+            elif net_profit <= 0:
+                st.error(f"❌ Loss detected (Net: {net_profit:.2f}%) — trade aborted immediately.")
+                st.session_state.log.append(f"Loss detected — trade cancelled ({net_profit:.2f}%)")
+                st.session_state.armed = False
+            else:
+                st.info(f"Monitoring... Net Profit: {net_profit:.2f}% (< {threshold}%)")
+        else:
+            st.warning("Price unavailable on one or both exchanges.")
+    time.sleep(3)
+    st.rerun()
+
+# ------------------------------------------
+# LOG
+# ------------------------------------------
+if st.session_state.log:
+    st.markdown('<div class="block">', unsafe_allow_html=True)
+    st.write("\n".join(st.session_state.log[-10:]))
+    st.markdown('</div>', unsafe_allow_html=True)
+else:
+    log_area.info("No logs yet. Click ▶️ Perform to start monitoring.")
