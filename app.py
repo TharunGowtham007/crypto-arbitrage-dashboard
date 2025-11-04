@@ -12,11 +12,9 @@ st.set_page_config(page_title="Arbitrage Dashboard", layout="wide")
 
 # All available exchanges from CCXT
 EXCHANGES = ccxt.exchanges
-# Common cryptos; user can input custom
-CRYPTOS = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "ADA/USDT", "XRP/USDT", "DOGE/USDT", "LTC/USDT", "DOT/USDT", "LINK/USDT"]
 
 # ------------------------------------------
-# STYLE (Mature Graphics - Grey Background with Gold Fainted Trishul)
+# STYLE (Mature Graphics - Grey Background)
 # ------------------------------------------
 st.markdown("""
 <style>
@@ -28,21 +26,6 @@ body {
 
 div[data-testid="stAppViewContainer"] {
     background: linear-gradient(to bottom, #6c757d, #495057);
-}
-
-div[data-testid="stAppViewContainer"]::before {
-    content: "";
-    background: url('https://upload.wikimedia.org/wikipedia/commons/3/3b/Trishul_symbol.svg') no-repeat center;
-    background-size: 400px 400px;
-    opacity: 0.3;
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 100%;
-    height: 100%;
-    z-index: 0;
-    filter: sepia(100%) hue-rotate(45deg) saturate(200%);
 }
 
 h1 {
@@ -102,6 +85,15 @@ h1 {
 """, unsafe_allow_html=True)
 
 # ------------------------------------------
+# TRISHUL BACKGROUND IMAGE
+# ------------------------------------------
+st.markdown("""
+<div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 0; opacity: 0.3; pointer-events: none;">
+<img src="https://upload.wikimedia.org/wikipedia/commons/3/3b/Trishul_symbol.svg" style="width: 500px; height: 500px; filter: sepia(100%) hue-rotate(45deg) saturate(200%);">
+</div>
+""", unsafe_allow_html=True)
+
+# ------------------------------------------
 # HEADER
 # ------------------------------------------
 st.title("Arbitrage Dashboard")
@@ -132,13 +124,9 @@ with col2:
     sell_api_key = st.text_input(f"{sell_ex.capitalize()} API Key", type="password", key="sell_key")
     sell_secret = st.text_input(f"{sell_ex.capitalize()} Secret", type="password", key="sell_secret")
 
-# Allow custom crypto pair input
-symbol_options = CRYPTOS + ["Custom"]
-symbol_choice = st.selectbox("Crypto Pair", symbol_options, index=0)
-if symbol_choice == "Custom":
-    symbol = st.text_input("Enter Custom Pair (e.g., BTC/USDT)", value="BTC/USDT")
-else:
-    symbol = symbol_choice
+# Allow input of any crypto pair
+symbol = st.text_input("Crypto Pair (e.g., BTC/USDT, ETH/BTC)", value="BTC/USDT")
+st.caption("Enter any available pair on the selected exchanges. The app will validate it.")
 
 # Custom investment input
 investment = st.number_input("Investment ($)", min_value=1.0, value=1000.0, step=1.0)
@@ -207,38 +195,43 @@ if st.session_state.armed and not st.session_state.stop:
     if not buy or not sell:
         st.error("Exchange initialization failed. Ensure API keys are correct or switch exchanges.")
     else:
-        pb = get_price(buy, symbol)
-        ps = get_price(sell, symbol)
-        if pb and ps:
-            diff = ((ps - pb) / pb) * 100
-            profit = investment * (diff / 100)
-            colx, coly, colz = st.columns(3)
-            with colx:
-                st.markdown(f"<div class='metric-green'><h4>Buy @ {buy_ex.capitalize()}</h4><p>${pb:.2f}</p></div>", unsafe_allow_html=True)
-            with coly:
-                st.markdown(f"<div class='metric-red'><h4>Sell @ {sell_ex.capitalize()}</h4><p>${ps:.2f}</p></div>", unsafe_allow_html=True)
-            with colz:
-                st.markdown(f"<div class='metric-profit'><h4>Profit</h4><p>${profit:.2f} ({diff:.2f}%)</p></div>", unsafe_allow_html=True)
-
-            if diff >= threshold:
-                if sim:
-                    st.success(f"🚀 PROFIT DETECTED (SIMULATION): +${profit:.2f} ({diff:.2f}%) — simulated trade executed.")
-                    st.session_state.log.append(f"Simulated trade: +${profit:.2f} ({diff:.2f}%)")
-                else:
-                    # Attempt real trade
-                    amount = investment / pb  # Approximate amount in crypto
-                    buy_order = execute_trade(buy, 'buy', symbol, amount, pb)
-                    sell_order = execute_trade(sell, 'sell', symbol, amount, ps)
-                    if buy_order and sell_order:
-                        st.success(f"🚀 PROFIT DETECTED: Real trade executed! +${profit:.2f} ({diff:.2f}%)")
-                        st.session_state.log.append(f"Real trade executed: +${profit:.2f} ({diff:.2f}%)")
-                    else:
-                        st.error("Real trade failed. Check balances and API permissions.")
-                st.session_state.armed = False
-            else:
-                st.info(f"Monitoring... Diff: {diff:.2f}% (< {threshold}%)")
+        # Check if symbol is available on both exchanges
+        if symbol not in buy.markets or symbol not in sell.markets:
+            st.error(f"Pair '{symbol}' not available on one or both exchanges. Please check and try again.")
+            st.session_state.armed = False
         else:
-            st.warning("Price unavailable on one or both exchanges.")
+            pb = get_price(buy, symbol)
+            ps = get_price(sell, symbol)
+            if pb and ps:
+                diff = ((ps - pb) / pb) * 100
+                profit = investment * (diff / 100)
+                colx, coly, colz = st.columns(3)
+                with colx:
+                    st.markdown(f"<div class='metric-green'><h4>Buy @ {buy_ex.capitalize()}</h4><p>${pb:.2f}</p></div>", unsafe_allow_html=True)
+                with coly:
+                    st.markdown(f"<div class='metric-red'><h4>Sell @ {sell_ex.capitalize()}</h4><p>${ps:.2f}</p></div>", unsafe_allow_html=True)
+                with colz:
+                    st.markdown(f"<div class='metric-profit'><h4>Profit</h4><p>${profit:.2f} ({diff:.2f}%)</p></div>", unsafe_allow_html=True)
+
+                if diff >= threshold:
+                    if sim:
+                        st.success(f"🚀 PROFIT DETECTED (SIMULATION): +${profit:.2f} ({diff:.2f}%) — simulated trade executed.")
+                        st.session_state.log.append(f"Simulated trade: +${profit:.2f} ({diff:.2f}%)")
+                    else:
+                        # Attempt real trade
+                        amount = investment / pb  # Approximate amount in crypto
+                        buy_order = execute_trade(buy, 'buy', symbol, amount, pb)
+                        sell_order = execute_trade(sell, 'sell', symbol, amount, ps)
+                        if buy_order and sell_order:
+                            st.success(f"🚀 PROFIT DETECTED: Real trade executed! +${profit:.2f} ({diff:.2f}%)")
+                            st.session_state.log.append(f"Real trade executed: +${profit:.2f} ({diff:.2f}%)")
+                        else:
+                            st.error("Real trade failed. Check balances and API permissions.")
+                    st.session_state.armed = False
+                else:
+                    st.info(f"Monitoring... Diff: {diff:.2f}% (< {threshold}%)")
+            else:
+                st.warning("Price unavailable on one or both exchanges.")
     time.sleep(3)
     st.rerun()
 
