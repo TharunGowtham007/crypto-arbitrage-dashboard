@@ -2,3 +2,7 @@ ccxt
 streamlit
 requests
 web3
+streamlit
+ccxt
+PyYAML
+streamlit-authenticator
