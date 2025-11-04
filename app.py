@@ -4,194 +4,222 @@ import streamlit as st
 import time
 import logging
 import datetime
-from decimal import Decimal, ROUND_DOWN
-import pandas as pd
+from decimal import Decimal
 
-# ---------------------- CONFIG ----------------------
+# ------------------------------------------
+# BASIC CONFIG
+# ------------------------------------------
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 st.set_page_config(page_title="Arbitrage Dashboard", layout="wide")
 
-EXCHANGES = ["binance", "kucoin", "kraken", "coinbase", "okx", "bitfinex", "bybit", "gate"]
-COMMON_PAIRS = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "BNB/USDT", "ADA/USDT", "XRP/USDT", "DOT/USDT", "DOGE/USDT", "Custom"]
-DEFAULT_POLL = 4  # seconds
-MAX_HISTORY = 50
+# Use the list of exchanges available in ccxt
+EXCHANGES = ccxt.exchanges
 
-# ---------------------- STYLE (DARK + GOLD TRISHUL) ----------------------
+# ------------------------------------------
+# STYLE (Dark Theme + Faint Golden Trishul)
+# ------------------------------------------
 st.markdown(
     """
 <style>
-:root { --gold: #b8860b; --muted: #9aa3a8; --panel: #0b0f12; --card: #0f1416; --accent: #0ad1c8; }
-html, body, [class*="css"]  {
-    background: #030405!important;
-    color: #cbd5d1!important;
-    font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+body {
+    background-color: #121212;
+    color: #e0e0e0;
+    font-family: "Segoe UI", sans-serif;
 }
-
-/* Trishul background (faint gold, centered) */
 div[data-testid="stAppViewContainer"] {
-    background-color: #030405;
-    position: relative;
-}
-div[data-testid="stAppViewContainer"]::before{
-    content: "";
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%,-50%);
-    width: 680px;
-    height: 680px;
-    background-image: url('https://upload.wikimedia.org/wikipedia/commons/3/3b/Trishul_symbol.svg');
-    background-repeat: no-repeat;
+    background: radial-gradient(circle at center, rgba(255, 215, 0, 0.06), rgba(0, 0, 0, 0.95)),
+                url('https://upload.wikimedia.org/wikipedia/commons/3/3b/Trishul_symbol.svg');
+    background-size: 25%;
     background-position: center;
-    background-size: contain;
-    opacity: 0.06;
-    filter: drop-shadow(0 6px 30px rgba(184,134,11,0.16));
-    z-index: 0;
-    pointer-events: none;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
 }
-
-/* Page title */
 h1 {
-    color: var(--gold) !important;
-    text-align: left;
+    color: #f1c40f;
+    text-align: center;
     font-weight: 700;
-    margin-bottom: 6px;
+    margin-bottom: 20px;
 }
-
-/* panels / cards */
 .block {
-    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-    border: 1px solid rgba(184,134,11,0.06);
+    background: rgba(255, 255, 255, 0.02);
     border-radius: 12px;
-    padding: 14px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.6);
-    z-index: 1;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(255, 215, 0, 0.03);
+    margin-bottom: 25px;
 }
-
-/* metrics */
-.metric {
-    padding: 10px;
-    border-radius: 10px;
-    color: #e6efe9;
+.metric-green {
+    background-color: rgba(40,167,69,0.08);
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #28a745;
 }
-.metric-buy { background: linear-gradient(90deg, rgba(0,128,96,0.06), rgba(0,128,96,0.03)); border-left: 4px solid #00b894; }
-.metric-sell{ background: linear-gradient(90deg, rgba(220,38,38,0.06), rgba(220,38,38,0.03)); border-left: 4px solid #ff6b6b; }
-.metric-profit{ background: linear-gradient(90deg, rgba(184,134,11,0.06), rgba(184,134,11,0.03)); border-left: 4px solid var(--gold); }
-
-/* small muted text */
-.small { color: #9aa3a8; font-size:13px; }
-
-/* buttons */
+.metric-red {
+    background-color: rgba(220,53,69,0.08);
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #dc3545;
+}
+.metric-profit {
+    background-color: rgba(255,193,7,0.06);
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #ffc107;
+}
 .stButton>button {
-    background: linear-gradient(90deg, #c59b1a, #b8860b) !important;
-    color: #041014 !important;
-    border-radius: 8px !important;
-    padding: 10px 16px !important;
-    font-weight: 700;
+    background-color: #f1c40f;
+    color: black;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 22px;
+    font-size: 16px;
+    font-weight: 600;
 }
-.stButton>button:hover { transform: translateY(-2px); }
-
-/* inputs */
-.stTextInput input, .stNumberInput input, .stSelectbox {
-    background: rgba(255,255,255,0.02) !important;
-    color: #dbe9e2 !important;
-    border-radius: 6px !important;
-    border: 1px solid rgba(184,134,11,0.06) !important;
-}
-
-/* chart container */
-.chart-card {
-    background: rgba(255,255,255,0.01);
-    border-radius: 10px;
-    padding: 8px;
-    border: 1px solid rgba(184,134,11,0.04);
+.stButton>button:hover {
+    background-color: #d4ac0d;
+    color: #000;
 }
 </style>
 """,
     unsafe_allow_html=True,
 )
 
-# ---------------------- SESSION STATE ----------------------
+# ------------------------------------------
+# HEADER
+# ------------------------------------------
+st.title("Arbitrage Dashboard")
+
+# ------------------------------------------
+# SESSION STATE
+# ------------------------------------------
 if "armed" not in st.session_state:
     st.session_state.armed = False
-if "stop_requested" not in st.session_state:
-    st.session_state.stop_requested = False
+if "stop" not in st.session_state:
+    st.session_state.stop = False
 if "log" not in st.session_state:
     st.session_state.log = []
-if "history" not in st.session_state:
-    st.session_state.history = {"ts": [], "buy": [], "sell": [], "net_pct": []}
 
-# ---------------------- HELPERS ----------------------
-def safe_init_exchange(name: str, api_key: str = None, secret: str = None):
+# ------------------------------------------
+# INPUT UI
+# ------------------------------------------
+st.markdown('<div class="block">', unsafe_allow_html=True)
+st.subheader("Configuration")
+
+col1, col2 = st.columns(2)
+with col1:
+    # Populate selectbox from ccxt.exchanges list for maximum options
+    buy_ex = st.selectbox("Buy Exchange", EXCHANGES, index=0)
+    buy_api_key = st.text_input(f"{buy_ex} API Key (optional)", type="password", key="buy_key")
+    buy_secret = st.text_input(f"{buy_ex} Secret (optional)", type="password", key="buy_secret")
+with col2:
+    sell_ex = st.selectbox("Sell Exchange", EXCHANGES, index=1)
+    sell_api_key = st.text_input(f"{sell_ex} API Key (optional)", type="password", key="sell_key")
+    sell_secret = st.text_input(f"{sell_ex} Secret (optional)", type="password", key="sell_secret")
+
+symbol = st.text_input("Crypto Pair (e.g., BTC/USDT, ETH/BTC)", value="BTC/USDT")
+st.caption("Enter any available pair on the selected exchanges.")
+
+investment = st.number_input("Investment ($)", min_value=1.0, value=1000.0, step=1.0)
+threshold = st.slider("Profit Threshold (%)", 0.1, 10.0, 1.0)
+
+colA, colB = st.columns(2)
+with colA:
+    perform = st.button("Perform")
+with colB:
+    stop = st.button("Stop")
+
+sim = st.checkbox("Simulation Mode (no real orders)", True)
+st.markdown('</div>', unsafe_allow_html=True)
+
+# ------------------------------------------
+# EXCHANGE HELPERS
+# ------------------------------------------
+def create_exchange(name, api_key=None, secret=None):
+    """Safely create ccxt exchange instance."""
     try:
-        params = {"enableRateLimit": True}
+        config = {"enableRateLimit": True}
         if api_key and secret:
-            params.update({"apiKey": api_key, "secret": secret})
-        ex = getattr(ccxt, name)(params)
+            config.update({"apiKey": api_key, "secret": secret})
+        ex = getattr(ccxt, name)(config)
+        # load markets but ignore failures
         try:
             ex.load_markets()
         except Exception:
-            # OK if markets can't be loaded right away
             pass
         return ex
     except Exception as e:
-        logging.debug(f"init {name} failed: {e}")
+        logging.error(f"Failed to initialize {name}: {e}")
         return None
 
-def fetch_price(exchange, symbol):
+
+def get_price(ex, sym):
+    """Fetch last/close price; return float or None."""
     try:
-        if exchange is None:
+        if ex is None:
             return None
-        # ensure markets
-        if not getattr(exchange, "markets", None):
+        # ensure markets loaded
+        if not getattr(ex, "markets", None):
             try:
-                exchange.load_markets()
+                ex.load_markets()
             except Exception:
                 pass
-        # symbol valid?
-        if symbol not in getattr(exchange, "markets", {}):
+        # check pair existence
+        if sym not in getattr(ex, "markets", {}):
             return None
-        ticker = exchange.fetch_ticker(symbol)
-        val = ticker.get("last") or ticker.get("close")
+        t = ex.fetch_ticker(sym)
+        val = t.get("last") or t.get("close")
         return float(val) if val is not None else None
     except Exception as e:
-        logging.debug(f"fetch_price {getattr(exchange,'id',None)} {symbol} err: {e}")
+        logging.debug(f"Failed to fetch price for {sym} on {getattr(ex,'id', None)}: {e}")
         return None
 
-def fetch_fee_pct(exchange, symbol):
+
+def get_trading_fee(ex, symbol):
     """
-    Returns effective fee percent (taker preferred) as a float (e.g. 0.1 for 0.1%)
-    Attempts: fetch_trading_fee -> markets info -> exchange.fees fallback
+    Return (maker, taker) as fractions (e.g., 0.001 for 0.1%).
+    Falls back to safe defaults if not available.
     """
-    if exchange is None:
-        return 0.1  # conservative fallback 0.1%
     try:
-        # Many exchanges support fetch_trading_fee
-        info = exchange.fetch_trading_fee(symbol)
-        taker = info.get("taker")
-        maker = info.get("maker")
-        # pick taker if available (we are using market or quick exec)
-        rate = taker if taker is not None else maker
-        if rate is not None:
-            return float(rate) * 100.0  # return in percent (0.1% -> 0.1)
-    except Exception:
-        pass
-    try:
-        # markets precision may have fee info
-        m = getattr(exchange, "markets", {}).get(symbol, {})
+        if ex is None:
+            return 0.001, 0.001
+        try:
+            info = ex.fetch_trading_fee(symbol)
+            maker = info.get("maker", None)
+            taker = info.get("taker", None)
+            if maker is not None and taker is not None:
+                return float(maker), float(taker)
+        except Exception:
+            # not all exchanges implement fetch_trading_fee
+            pass
+        # try markets metadata
+        m = getattr(ex, "markets", {}).get(symbol, {})
         if m:
-            taker = m.get("taker") or m.get("takerFee")
-            if taker:
-                return float(taker) * 100.0
+            maker = m.get("maker") or m.get("makerFee") or None
+            taker = m.get("taker") or m.get("takerFee") or None
+            if maker is not None and taker is not None:
+                return float(maker), float(taker)
+        # fallback to exchange.fees data
+        try:
+            taker = getattr(ex, "fees", {}).get("trading", {}).get("taker", 0.001)
+            maker = getattr(ex, "fees", {}).get("trading", {}).get("maker", taker)
+            return float(maker), float(taker)
+        except Exception:
+            return 0.001, 0.001
     except Exception:
-        pass
+        return 0.001, 0.001
+
+
+def execute_trade(ex, side, symbol, amount, price):
+    """Simple wrapper for limit order execution. Returns order or None."""
     try:
-        # fallback to exchange.fees
-        return float(getattr(exchange, "fees", {}).get("trading", {}).get("taker", 0.001)) * 100.0
-    except Exception:
-        return 0.1
+        order = ex.create_order(symbol, "limit", side, amount, price)
+        return order
+    except Exception as e:
+        logging.error(f"Trade execution failed: {e}")
+        return None
+
 
 def round_base_amount(exchange, symbol, amount):
+    """Round amount according to exchange market precision if available."""
     try:
         m = getattr(exchange, "markets", {}).get(symbol, {})
         precision = m.get("precision", {}).get("amount")
@@ -202,177 +230,132 @@ def round_base_amount(exchange, symbol, amount):
     except Exception:
         return float(amount)
 
-def execute_market_orders(buy_ex, sell_ex, symbol, amount):
-    """
-    Attempt to create market orders. This is simplistic and assumes
-    both exchanges support create_market_order; in many real cases you'd need
-    exchange-specific flow, order books, balances, etc.
-    """
-    try:
-        # use create_market_order where available (ccxt naming varies)
-        buy_resp = buy_ex.create_market_buy_order(symbol, amount) if hasattr(buy_ex, "create_market_buy_order") else buy_ex.create_order(symbol, 'market', 'buy', amount)
-    except Exception as e:
-        buy_resp = {"error": str(e)}
-    try:
-        sell_resp = sell_ex.create_market_sell_order(symbol, amount) if hasattr(sell_ex, "create_market_sell_order") else sell_ex.create_order(symbol, 'market', 'sell', amount)
-    except Exception as e:
-        sell_resp = {"error": str(e)}
-    return buy_resp, sell_resp
 
-# ---------------------- UI ----------------------
-st.title("Arbitrage Dashboard")
-st.markdown('<div class="small">Dark theme · live prices & fees · auto-stop on loss</div>', unsafe_allow_html=True)
-st.markdown("")
-
-# top config panel
-with st.container():
-    st.markdown('<div class="block">', unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([2,2,1])
-    with c1:
-        buy_exchange = st.selectbox("Buy exchange", EXCHANGES, index=0)
-        buy_api = st.text_input(f"{buy_exchange} API key (optional)", type="password", key="buy_api")
-        buy_secret = st.text_input(f"{buy_exchange} Secret (optional)", type="password", key="buy_secret")
-    with c2:
-        sell_exchange = st.selectbox("Sell exchange", EXCHANGES, index=1)
-        sell_api = st.text_input(f"{sell_exchange} API key (optional)", type="password", key="sell_api")
-        sell_secret = st.text_input(f"{sell_exchange} Secret (optional)", type="password", key="sell_secret")
-    with c3:
-        pair_choice = st.selectbox("Pair", COMMON_PAIRS, index=0)
-        if pair_choice == "Custom":
-            symbol = st.text_input("Enter pair (e.g. BTC/USDT)", value="BTC/USDT")
-        else:
-            symbol = pair_choice
-    st.markdown("---")
-    d1, d2, d3 = st.columns([1,1,1])
-    with d1:
-        investment = st.number_input("Investment (USD)", min_value=1.0, value=1000.0, step=1.0)
-    with d2:
-        profit_threshold = st.slider("Minimum net profit (%)", min_value=0.1, max_value=10.0, value=1.0, step=0.1)
-    with d3:
-        sim_mode = st.checkbox("Simulation mode (no real orders)", value=True)
-    st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-    p1, p2 = st.columns([1,1])
-    with p1:
-        perform = st.button("Perform")
-    with p2:
-        stop_btn = st.button("Stop")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# placeholders
-price_col = st.container()
-status_col = st.empty()
-history_col = st.container()
-
-# ---------------------- Button behavior ----------------------
+# ------------------------------------------
+# MAIN LOGIC
+# ------------------------------------------
 if perform:
     st.session_state.armed = True
-    st.session_state.stop_requested = False
-    st.success("Bot armed — monitoring live opportunities.")
-if stop_btn:
+    st.session_state.stop = False
+    st.success("Bot armed — monitoring live prices and fees.")
+
+if stop:
     st.session_state.armed = False
-    st.session_state.stop_requested = True
+    st.session_state.stop = True
     st.warning("Monitoring stopped by user.")
 
-# ---------------------- Monitoring loop (single iteration per run) ----------------------
-if st.session_state.armed and not st.session_state.stop_requested:
-    # init exchanges
-    buy_ex = safe_init_exchange(buy_exchange, st.session_state.get("buy_api") or buy_api, st.session_state.get("buy_secret") or buy_secret)
-    sell_ex = safe_init_exchange(sell_exchange, st.session_state.get("sell_api") or sell_api, st.session_state.get("sell_secret") or sell_secret)
+if st.session_state.armed and not st.session_state.stop:
+    # initialize exchanges (using provided keys where possible)
+    buy = create_exchange(buy_ex, buy_api_key or None, buy_secret or None)
+    sell = create_exchange(sell_ex, sell_api_key or None, sell_secret or None)
 
-    if not buy_ex or not sell_ex:
-        status_col.error("Exchange init failed for one or both exchanges. Try different ones.")
+    if not buy or not sell:
+        st.error("Exchange initialization failed for one or both exchanges. Check exchange names and API keys.")
         st.session_state.armed = False
     else:
-        # fetch prices
-        pb = fetch_price(buy_ex, symbol)
-        ps = fetch_price(sell_ex, symbol)
+        # fetch prices safely
+        pb = get_price(buy, symbol)
+        ps = get_price(sell, symbol)
 
-        # show availability
-        if pb is None or ps is None:
-            status_col.warning("Price unavailable for pair on one or both exchanges. Monitoring paused.")
+        if (pb is None) or (ps is None):
+            st.warning("Price unavailable for the pair on one or both exchanges. Monitoring paused.")
             st.session_state.armed = False
         else:
-            # fetch fees (percent values)
-            buy_fee_pct = fetch_fee_pct(buy_ex, symbol)   # e.g. 0.1 means 0.1%
-            sell_fee_pct = fetch_fee_pct(sell_ex, symbol)
-            total_fee_pct = buy_fee_pct + sell_fee_pct
-
-            # compute spread and net pct after fees
-            raw_pct = ((ps - pb) / pb) * 100.0
-            net_pct = raw_pct - total_fee_pct  # net percent after subtracting both fees
-            estimated_profit_usd = investment * (net_pct / 100.0)
-
-            # update history
-            ts = datetime.datetime.now().strftime("%H:%M:%S")
-            st.session_state.history["ts"].append(ts)
-            st.session_state.history["buy"].append(pb)
-            st.session_state.history["sell"].append(ps)
-            st.session_state.history["net_pct"].append(net_pct)
-            if len(st.session_state.history["ts"]) > MAX_HISTORY:
-                for k in st.session_state.history:
-                    st.session_state.history[k].pop(0)
-
-            # display metrics
-            with price_col:
-                st.markdown('<div class="block">', unsafe_allow_html=True)
-                cols = st.columns([1,1,1])
-                with cols[0]:
-                    st.markdown(f"<div class='metric metric-buy'><strong>Buy @ {buy_exchange.upper()}</strong><div style='font-size:18px;margin-top:6px;'>${pb:,.4f}</div><div class='small'>Fee: {buy_fee_pct:.4f}%</div></div>", unsafe_allow_html=True)
-                with cols[1]:
-                    st.markdown(f"<div class='metric metric-sell'><strong>Sell @ {sell_exchange.upper()}</strong><div style='font-size:18px;margin-top:6px;'>${ps:,.4f}</div><div class='small'>Fee: {sell_fee_pct:.4f}%</div></div>", unsafe_allow_html=True)
-                with cols[2]:
-                    st.markdown(f"<div class='metric metric-profit'><strong>Net (after fees)</strong><div style='font-size:18px;margin-top:6px;'>{net_pct:,.4f}%</div><div class='small'>Est profit: ${estimated_profit_usd:,.2f} on ${investment}</div></div>", unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
-
-            # chart / history
-            with history_col:
-                st.markdown('<div class="block chart-card">', unsafe_allow_html=True)
-                try:
-                    df = pd.DataFrame({
-                        "Buy": st.session_state.history["buy"],
-                        "Sell": st.session_state.history["sell"],
-                        "Net %": st.session_state.history["net_pct"]
-                    }, index=st.session_state.history["ts"])
-                    st.line_chart(df[["Buy", "Sell"]])
-                    st.markdown("</div>", unsafe_allow_html=True)
-                except Exception:
-                    st.markdown("</div>", unsafe_allow_html=True)
-
-            # enforcement: immediate stop if net profit <= 0
-            if net_pct <= 0:
-                status_col.error(f"LOSS DETECTED — net% = {net_pct:.4f}%. Aborting any execution and stopping monitoring.")
-                st.session_state.log.append(f"{datetime.datetime.now().isoformat()}: LOSS DETECTED: {net_pct:.4f}% on {symbol} ({buy_exchange}->{sell_exchange})")
+            # ensure numeric
+            try:
+                pb = float(pb)
+                ps = float(ps)
+            except Exception:
+                st.error("Received non-numeric price data; aborting monitoring.")
                 st.session_state.armed = False
-            elif net_pct < profit_threshold:
-                status_col.info(f"Net {net_pct:.4f}% is below threshold {profit_threshold}%. Continuing monitoring.")
-                # continue monitoring: sleep + rerun
-                time.sleep(DEFAULT_POLL)
-                st.experimental_rerun()
-            else:
-                # net_pct >= threshold and > 0 => candidate
-                status_col.success(f"PROFIT CANDIDATE: net {net_pct:.4f}% — estimated ${estimated_profit_usd:,.2f}")
-                st.session_state.log.append(f"{datetime.datetime.now().isoformat()}: Candidate net {net_pct:.4f}% estimated ${estimated_profit_usd:,.2f}")
+                pb = None
+                ps = None
 
-                if sim_mode:
-                    status_col.info("Simulation mode ON — logging simulated execution and stopping monitor.")
-                    st.session_state.log.append(f"{datetime.datetime.now().isoformat()}: SIMULATED EXECUTION: ${estimated_profit_usd:,.2f}")
+            if pb is not None and ps is not None:
+                # get fees (fractions)
+                buy_maker, buy_taker = get_trading_fee(buy, symbol)
+                sell_maker, sell_taker = get_trading_fee(sell, symbol)
+                # use taker fees for aggressive execution estimation
+                buy_fee = buy_taker
+                sell_fee = sell_taker
+
+                total_fee_fraction = buy_fee + sell_fee  # e.g. 0.001 + 0.001 = 0.002
+                # estimated fees in USD relative to invested USD (approx)
+                estimated_fee_usd = investment * total_fee_fraction
+
+                # gross profit in USD (sell-buy) * (investment / buy_price)
+                # approximate base amount purchased with investment
+                approx_base_amount = investment / pb if pb > 0 else 0.0
+                gross_profit_usd = (ps - pb) * approx_base_amount
+                net_profit_usd = gross_profit_usd - estimated_fee_usd
+                # percent on investment
+                diff_percent = (net_profit_usd / investment) * 100.0 if investment > 0 else 0.0
+
+                # display metrics
+                colx, coly, colz = st.columns(3)
+                with colx:
+                    st.markdown(
+                        f"<div class='metric-green'><strong>Buy @ {buy_ex.upper()}</strong><div style='font-size:18px;margin-top:6px;'>${pb:,.6f}</div><div style='color:#9aa3a8;font-size:12px;margin-top:6px;'>Est taker fee: {buy_fee*100:.4f}%</div></div>",
+                        unsafe_allow_html=True,
+                    )
+                with coly:
+                    st.markdown(
+                        f"<div class='metric-red'><strong>Sell @ {sell_ex.upper()}</strong><div style='font-size:18px;margin-top:6px;'>${ps:,.6f}</div><div style='color:#9aa3a8;font-size:12px;margin-top:6px;'>Est taker fee: {sell_fee*100:.4f}%</div></div>",
+                        unsafe_allow_html=True,
+                    )
+                with colz:
+                    st.markdown(
+                        f"<div class='metric-profit'><strong>Net Profit</strong><div style='font-size:18px;margin-top:6px;'>${net_profit_usd:,.2f} ({diff_percent:.4f}%)</div><div style='color:#9aa3a8;font-size:12px;margin-top:6px;'>Estimated fees: ${estimated_fee_usd:,.2f}</div></div>",
+                        unsafe_allow_html=True,
+                    )
+
+                # enforce safety: immediate abort if net profit <= 0
+                if net_profit_usd <= 0:
+                    st.error(f"Loss detected after estimated fees (${net_profit_usd:.2f}). Aborting and stopping monitoring.")
+                    st.session_state.log.append(f"{datetime.datetime.now().isoformat()}: Aborted — loss ${net_profit_usd:.2f}")
                     st.session_state.armed = False
+                elif diff_percent < threshold:
+                    st.info(f"Opportunity present but net% {diff_percent:.4f}% is below threshold {threshold}%. Continuing monitoring.")
+                    # continue monitoring loop
+                    time.sleep(3)
+                    st.experimental_rerun()
                 else:
-                    # compute base amount and rounding
-                    base_symbol = symbol.split("/")[0]
-                    approx_base_amount = investment / pb if pb > 0 else 0
-                    base_amount = round_base_amount(buy_ex, symbol, approx_base_amount)
-                    if base_amount <= 0:
-                        status_col.error("Computed trade amount is zero after rounding. Aborting.")
+                    # profitable by threshold after fees
+                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    if sim:
+                        st.success(f"Simulated trade: Estimated profit ${net_profit_usd:.2f} ({diff_percent:.4f}%) — logging and stopping.")
+                        st.session_state.log.append(f"{timestamp}: SIMULATED trade +${net_profit_usd:.2f} ({diff_percent:.4f}%)")
                         st.session_state.armed = False
                     else:
-                        status_col.info(f"Attempting market orders for {base_amount:.8f} {base_symbol} ...")
-                        buy_resp, sell_resp = execute_market_orders(buy_ex, sell_ex, symbol, base_amount)
-                        st.write("Buy response:", buy_resp)
-                        st.write("Sell response:", sell_resp)
-                        # rudimentary success check
-                        if isinstance(buy_resp, dict) and "error" in buy_resp:
-                            status_col.error(f"Buy failed: {buy_resp['error']}")
-                            st.session_state.log.append(f"{datetime.datetime.now().isoformat()}: BUY FAILED: {buy_resp['error']}")
+                        # attempt real execution (simple limit orders at current prices)
+                        approx_amount = round_base_amount(buy, symbol, approx_base_amount)
+                        if approx_amount <= 0:
+                            st.error("Calculated trade amount is zero after rounding. Aborting.")
                             st.session_state.armed = False
-                        elif isinstance(sell
+                        else:
+                            st.info(f"Attempting execution for {approx_amount:.8f} units.")
+                            buy_order = execute_trade(buy, "buy", symbol, approx_amount, pb)
+                            sell_order = execute_trade(sell, "sell", symbol, approx_amount, ps)
+                            # rudimentary check — real trading requires thorough order verification
+                            if buy_order is None or sell_order is None:
+                                st.error("One or both orders failed. Check API permissions, balances, and order responses.")
+                                st.session_state.log.append(f"{timestamp}: REAL trade failed (buy/sell response issues).")
+                            else:
+                                st.success(f"Executed trades (check exchange order history). Estimated net profit: ${net_profit_usd:.2f}")
+                                st.session_state.log.append(f"{timestamp}: REAL trade +${net_profit_usd:.2f} ({diff_percent:.4f}%)")
+                            st.session_state.armed = False
+
+    # small pause before next run if not stopped by above branches
+    time.sleep(1)
+    st.experimental_rerun()
+
+# ------------------------------------------
+# TRADE HISTORY
+# ------------------------------------------
+st.markdown('<div class="block">', unsafe_allow_html=True)
+st.subheader("Recent Trades / Logs")
+if st.session_state.log:
+    st.write("\n".join(st.session_state.log[-30:]))
+else:
+    st.info("No trades yet. Click Perform to start monitoring.")
+st.markdown('</div>', unsafe_allow_html=True)
