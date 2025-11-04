@@ -10,16 +10,25 @@ from yaml.loader import SafeLoader
 # ------------------------------------------
 # LOAD CONFIG FOR AUTHENTICATION
 # ------------------------------------------
-with open('config.yaml') as file:
+import os
+print("Current working directory:", os.getcwd())
+print("Files in this directory:", os.listdir())
+
+import os
+if not os.path.exists('config.yaml'):
+    raise FileNotFoundError(f"config.yaml not found in: {os.getcwd()} \nFiles: {os.listdir()}")
+
+with open(r"C:\Users\lenovo\OneDrive\CryptoArbitrage\config.yaml") as file:
+
     config = yaml.load(file, Loader=SafeLoader)
 
 authenticator = stauth.Authenticate(
     config['credentials'],
     config['cookie']['name'],
     config['cookie']['key'],
-    config['cookie']['expiry_days'],
-    config['preauthorized']
+    config['cookie']['expiry_days']
 )
+
 
 # ------------------------------------------
 # BASIC CONFIG
