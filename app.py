@@ -14,28 +14,31 @@ st.set_page_config(page_title="Arbitrage Dashboard", layout="wide")
 EXCHANGES = ccxt.exchanges
 
 # ------------------------------------------
-# STYLE (Faint Golden Trishul Background)
+# CUSTOM STYLE — GOLDEN TRISHUL BACKGROUND
 # ------------------------------------------
 st.markdown("""
 <style>
 body {
-    background: radial-gradient(circle at top, #1c1c1c, #000000);
-    color: #f8f9fa;
+    background-color: #000000;
+    color: #ffffff;
     font-family: "Segoe UI", sans-serif;
     overflow-x: hidden;
 }
 
-/* Trishul symbol faintly in the background */
+/* Trishul image faint golden background */
 div[data-testid="stAppViewContainer"] {
-    background: radial-gradient(circle at center, #1c1c1c, #000000);
-    position: relative;
+    background: url('https://upload.wikimedia.org/wikipedia/commons/3/3b/Trishul_symbol.svg') no-repeat center center fixed;
+    background-size: 600px 600px;
+    background-blend-mode: soft-light;
+    opacity: 0.98;
+    background-color: #000000;
 }
+
 div[data-testid="stAppViewContainer"]::before {
     content: "";
     background: url('https://upload.wikimedia.org/wikipedia/commons/3/3b/Trishul_symbol.svg') no-repeat center center;
-    background-size: 420px 420px;
-    opacity: 0.06;
-    filter: drop-shadow(0 0 10px rgba(255,215,0,0.5));
+    background-size: 650px 650px;
+    opacity: 0.07;
     position: fixed;
     top: 50%;
     left: 50%;
@@ -43,27 +46,24 @@ div[data-testid="stAppViewContainer"]::before {
     width: 100%;
     height: 100%;
     z-index: 0;
+    pointer-events: none;
 }
 
-/* Title */
+/* Title styling */
 h1 {
     color: #FFD700;
     text-align: center;
-    font-weight: 700;
-    text-shadow: 0px 0px 20px rgba(255,215,0,0.5);
-    animation: glow 3s ease-in-out infinite alternate;
-}
-@keyframes glow {
-    from { text-shadow: 0 0 10px rgba(255,215,0,0.4); }
-    to { text-shadow: 0 0 25px rgba(255,215,0,0.8), 0 0 40px rgba(255,215,0,0.6); }
+    font-weight: 800;
+    text-shadow: 0 0 25px rgba(255,215,0,0.5);
+    margin-bottom: 10px;
 }
 
-/* UI blocks */
+/* Panels */
 .block {
     background: rgba(255,255,255,0.08);
     border-radius: 15px;
     padding: 20px;
-    box-shadow: 0 0 20px rgba(255,215,0,0.15);
+    box-shadow: 0 0 15px rgba(255,215,0,0.15);
     margin-bottom: 25px;
     z-index: 1;
 }
@@ -88,7 +88,7 @@ h1 {
     padding: 15px;
     border-radius: 10px;
     border-left: 4px solid #FFD700;
-    box-shadow: 0 0 20px rgba(255,215,0,0.2);
+    box-shadow: 0 0 15px rgba(255,215,0,0.2);
 }
 
 /* Buttons */
@@ -123,7 +123,7 @@ h2, h3, h4 {
 # ------------------------------------------
 # HEADER
 # ------------------------------------------
-st.title("Arbitrage Dashboard ⚡")
+st.title("Arbitrage Dashboard")
 
 # ------------------------------------------
 # SESSION
