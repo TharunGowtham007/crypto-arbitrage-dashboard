@@ -194,10 +194,11 @@ if st.session_state.armed and not st.session_state.stop:
                 buy_fee = get_fee(buy, symbol, "buy", 1, pb)
                 sell_fee = get_fee(sell, symbol, "sell", 1, ps)
 
-                diff = ((ps - pb) / pb) * 100
+                # Fix: Use Decimal for consistent types (avoids TypeError when subtracting Decimal from float)
+                diff = Decimal((ps - pb) / pb) * 100
                 fee_cost = (buy_fee + sell_fee) * 100
                 net_diff = diff - fee_cost
-                profit = investment * (net_diff / 100)
+                profit = float(investment * (net_diff / 100))  # Convert to float for display
 
                 colx, coly, colz = st.columns(3)
                 with colx:
@@ -205,7 +206,7 @@ if st.session_state.armed and not st.session_state.stop:
                 with coly:
                     st.markdown(f"<div class='metric-red'><h4>Sell @ {sell_ex.capitalize()}</h4><p>${ps:.2f}</p></div>", unsafe_allow_html=True)
                 with colz:
-                    st.markdown(f"<div class='metric-profit'><h4>Profit (after fees)</h4><p>${profit:.2f} ({net_diff:.2f}%)</p></div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='metric-profit'><h4>Profit (after fees)</h4><p>${profit:.2f} ({float(net_diff):.2f}%)</p></div>", unsafe_allow_html=True)
 
                 if net_diff <= 0:
                     st.warning("Loss detected — stopped automatically.")
@@ -213,14 +214,14 @@ if st.session_state.armed and not st.session_state.stop:
                 elif net_diff >= threshold:
                     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     if sim:
-                        st.success(f"SIM PROFIT: +${profit:.2f} ({net_diff:.2f}%)")
+                        st.success(f"SIM PROFIT: +${profit:.2f} ({float(net_diff):.2f}%)")
                         st.session_state.log.append(f"{timestamp}: Simulated +${profit:.2f}")
                     else:
-                        st.success(f"REAL PROFIT: +${profit:.2f} ({net_diff:.2f}%)")
+                        st.success(f"REAL PROFIT: +${profit:.2f} ({float(net_diff):.2f}%)")
                         st.session_state.log.append(f"{timestamp}: Real +${profit:.2f}")
                     st.session_state.armed = False
                 else:
-                    st.info(f"Monitoring... Diff: {net_diff:.2f}% (< {threshold}%)")
+                    st.info(f"Monitoring... Diff: {float(net_diff):.2f}% (< {threshold}%)")
             else:
                 st.warning("Price unavailable.")
     time.sleep(5)
