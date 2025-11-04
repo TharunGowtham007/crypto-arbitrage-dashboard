@@ -101,7 +101,7 @@ div[data-testid="stAppViewContainer"] > .main {
 # ------------------------------------------
 # AUTHENTICATION
 # ------------------------------------------
-name, authentication_status = authenticator.login(location='main')
+name, authentication_status, username = authenticator.login(location='main')
 
 
 
