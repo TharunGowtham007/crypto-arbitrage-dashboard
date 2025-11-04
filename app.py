@@ -391,6 +391,4 @@ if st.session_state.armed and not st.session_state.stop:
                     df = pd.DataFrame({
                         "Buy Price": st.session_state.price_history["buy"],
                         "Sell Price": st.session_state.price_history["sell"],
-                        "Diff %": st.session_state.price_history["diff"]
-                    })
-                    st.line_chart(df,
+                        "Diff %": st.session_state.price
