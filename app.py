@@ -27,13 +27,8 @@ if not os.path.exists('config.yaml'):
 with open('config.yaml') as file:
     config = yaml.load(file, Loader=SafeLoader)
 
-# Initialize the authenticator (new syntax)
-authenticator = stauth.Authenticate(
-    config['credentials'],
-    config['cookie']['name'],
-    config['cookie']['key'],
-    config['cookie']['expiry_days']
-)
+# Initialize the authenticator (0.4.x syntax)
+authenticator = stauth.Authenticate(config)
 
 
 
