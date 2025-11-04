@@ -55,31 +55,32 @@ def execute_trade(ex, side, symbol, amount, price):
         return None
 
 # ------------------------------------------
-# CUSTOM STYLE — ENHANCED GOLDEN TRISHUL BACKGROUND & MATURE GRAPHICS
+# CUSTOM STYLE — ENHANCED MATURE GRAPHICS
 # ------------------------------------------
 st.markdown("""
 <style>
 body {
-    background-color: #000000;
+    background: linear-gradient(135deg, #000000, #1a1a1a);
     color: #ffffff;
     font-family: "Segoe UI", sans-serif;
     overflow-x: hidden;
-    animation: fadeIn 1s ease-in;
+    animation: globalFade 1.5s ease-in;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+@keyframes globalFade {
+    from { opacity: 0; transform: scale(0.98); }
+    to { opacity: 1; transform: scale(1); }
 }
 
-/* Trishul image faint golden background with glow */
+/* Trishul background with enhanced glow and particles */
 div[data-testid="stAppViewContainer"] {
     background: url('https://upload.wikimedia.org/wikipedia/commons/3/3b/Trishul_symbol.svg') no-repeat center center fixed;
     background-size: 600px 600px;
     background-blend-mode: soft-light;
     opacity: 0.98;
     background-color: #000000;
-    box-shadow: inset 0 0 100px rgba(255,215,0,0.1);
+    box-shadow: inset 0 0 150px rgba(255,215,0,0.15);
+    position: relative;
 }
 
 div[data-testid="stAppViewContainer"]::before {
@@ -95,133 +96,175 @@ div[data-testid="stAppViewContainer"]::before {
     height: 100%;
     z-index: 0;
     pointer-events: none;
-    filter: drop-shadow(0 0 20px rgba(255,215,0,0.3));
+    filter: drop-shadow(0 0 30px rgba(255,215,0,0.4)) blur(1px);
 }
 
-/* Title styling with enhanced glow */
+div[data-testid="stAppViewContainer"]::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at 20% 80%, rgba(255,215,0,0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255,215,0,0.1) 0%, transparent 50%);
+    z-index: -1;
+    animation: particleFloat 10s infinite linear;
+}
+
+@keyframes particleFloat {
+    0% { transform: translateY(0px); }
+    100% { transform: translateY(-20px); }
+}
+
+/* Title with advanced glow and rotation */
 h1 {
     color: #FFD700;
     text-align: center;
     font-weight: 800;
-    text-shadow: 0 0 30px rgba(255,215,0,0.8), 0 0 60px rgba(255,215,0,0.4);
-    margin-bottom: 10px;
-    animation: pulse 3s infinite;
+    text-shadow: 0 0 40px rgba(255,215,0,1), 0 0 80px rgba(255,215,0,0.6), 0 0 120px rgba(255,215,0,0.3);
+    margin-bottom: 15px;
+    animation: titleGlow 4s infinite ease-in-out, titleRotate 20s infinite linear;
 }
 
-@keyframes pulse {
-    0%, 100% { text-shadow: 0 0 30px rgba(255,215,0,0.8); }
-    50% { text-shadow: 0 0 50px rgba(255,215,0,1); }
+@keyframes titleGlow {
+    0%, 100% { text-shadow: 0 0 40px rgba(255,215,0,1); }
+    50% { text-shadow: 0 0 60px rgba(255,215,0,1.2); }
 }
 
-/* Panels with fade-in and better shadows */
+@keyframes titleRotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Panels with 3D effects and slide-in */
 .block {
-    background: rgba(255,255,255,0.08);
-    border-radius: 15px;
-    padding: 20px;
-    box-shadow: 0 0 20px rgba(255,215,0,0.2), 0 4px 15px rgba(0,0,0,0.3);
-    margin-bottom: 25px;
+    background: linear-gradient(145deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 40px rgba(255,215,0,0.2), inset 0 1px 0 rgba(255,255,255,0.1);
+    margin-bottom: 30px;
     z-index: 1;
-    animation: slideIn 0.5s ease-out;
+    animation: blockSlide 0.8s ease-out;
+    border: 1px solid rgba(255,215,0,0.1);
 }
 
-@keyframes slideIn {
-    from { transform: translateY(20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+@keyframes blockSlide {
+    from { transform: translateY(30px) scale(0.95); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
 }
 
-/* Metric cards with glowing borders and hover effects */
+/* Metric cards with 3D depth and hover rotations */
 .metric-green {
-    background: linear-gradient(135deg, rgba(0,255,0,0.15), rgba(0,255,0,0.05));
-    padding: 15px;
-    border-radius: 10px;
-    border-left: 4px solid #00ff00;
-    box-shadow: 0 0 10px rgba(0,255,0,0.3);
-    transition: transform 0.3s, box-shadow 0.3s;
+    background: linear-gradient(145deg, rgba(0,255,0,0.2), rgba(0,255,0,0.1));
+    padding: 20px;
+    border-radius: 15px;
+    border-left: 5px solid #00ff00;
+    box-shadow: 0 5px 15px rgba(0,255,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform-style: preserve-3d;
 }
 
 .metric-green:hover {
-    transform: scale(1.02);
-    box-shadow: 0 0 20px rgba(0,255,0,0.5);
+    transform: rotateX(5deg) rotateY(5deg) scale(1.03);
+    box-shadow: 0 10px 25px rgba(0,255,0,0.6);
 }
 
 .metric-red {
-    background: linear-gradient(135deg, rgba(255,0,0,0.15), rgba(255,0,0,0.05));
-    padding: 15px;
-    border-radius: 10px;
-    border-left: 4px solid #ff0000;
-    box-shadow: 0 0 10px rgba(255,0,0,0.3);
-    transition: transform 0.3s, box-shadow 0.3s;
+    background: linear-gradient(145deg, rgba(255,0,0,0.2), rgba(255,0,0,0.1));
+    padding: 20px;
+    border-radius: 15px;
+    border-left: 5px solid #ff0000;
+    box-shadow: 0 5px 15px rgba(255,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform-style: preserve-3d;
 }
 
 .metric-red:hover {
-    transform: scale(1.02);
-    box-shadow: 0 0 20px rgba(255,0,0,0.5);
+    transform: rotateX(5deg) rotateY(5deg) scale(1.03);
+    box-shadow: 0 10px 25px rgba(255,0,0,0.6);
 }
 
 .metric-profit {
-    background: linear-gradient(135deg, rgba(255,215,0,0.1), rgba(255,215,0,0.05));
-    padding: 15px;
-    border-radius: 10px;
-    border-left: 4px solid #FFD700;
-    box-shadow: 0 0 15px rgba(255,215,0,0.4);
-    transition: transform 0.3s, box-shadow 0.3s;
+    background: linear-gradient(145deg, rgba(255,215,0,0.15), rgba(255,215,0,0.08));
+    padding: 20px;
+    border-radius: 15px;
+    border-left: 5px solid #FFD700;
+    box-shadow: 0 5px 15px rgba(255,215,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transform-style: preserve-3d;
 }
 
 .metric-profit:hover {
-    transform: scale(1.02);
-    box-shadow: 0 0 25px rgba(255,215,0,0.6);
+    transform: rotateX(5deg) rotateY(5deg) scale(1.03);
+    box-shadow: 0 10px 25px rgba(255,215,0,0.7);
 }
 
-/* Buttons with gradient and hover animations */
+/* Buttons with advanced hover and depth */
 .stButton>button {
-    background: linear-gradient(135deg, #FFD700, #b8860b);
+    background: linear-gradient(145deg, #FFD700, #b8860b, #FFD700);
     color: #000;
     border: none;
-    border-radius: 8px;
-    padding: 12px 22px;
+    border-radius: 10px;
+    padding: 15px 25px;
     font-size: 16px;
     font-weight: 600;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 10px rgba(255,215,0,0.3);
+    transition: all 0.4s ease;
+    box-shadow: 0 5px 15px rgba(255,215,0,0.4), inset 0 1px 0 rgba(255,255,255,0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.stButton>button::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.stButton>button:hover::before {
+    left: 100%;
 }
 
 .stButton>button:hover {
-    background: linear-gradient(135deg, #ffcc33, #d4af37);
-    transform: scale(1.05) translateY(-2px);
-    box-shadow: 0 6px 20px rgba(255,215,0,0.5);
+    background: linear-gradient(145deg, #ffcc33, #d4af37, #ffcc33);
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 10px 25px rgba(255,215,0,0.6);
 }
 
-/* Inputs with subtle glow */
+/* Inputs with refined glow and focus */
 .stSelectbox, .stTextInput, .stNumberInput {
-    border-radius: 5px;
-    background-color: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,215,0,0.2);
-    transition: border-color 0.3s;
+    border-radius: 8px;
+    background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+    border: 1px solid rgba(255,215,0,0.3);
+    transition: all 0.3s ease;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
 }
 
-.stSelectbox:hover, .stTextInput:hover, .stNumberInput:hover {
-    border-color: rgba(255,215,0,0.5);
+.stSelectbox:focus, .stTextInput:focus, .stNumberInput:focus {
+    border-color: #FFD700;
+    box-shadow: 0 0 10px rgba(255,215,0,0.5), inset 0 2px 5px rgba(0,0,0,0.2);
 }
 
-/* Subheaders with icons */
+/* Subheaders with clean styling */
 h2, h3, h4 {
-    color: #fff;
-    display: flex;
-    align-items: center;
+    color: #FFD700;
+    font-weight: 600;
+    margin-bottom: 10px;
 }
 
-h2::before, h3::before, h4::before {
-    content: "⚡";
-    margin-right: 10px;
-}
-
-/* Chart container with enhanced styling */
+/* Chart container with depth */
 .chart-container {
-    background: rgba(255,255,255,0.05);
-    border-radius: 10px;
-    padding: 10px;
-    margin-top: 10px;
-    box-shadow: 0 0 10px rgba(255,215,0,0.2);
+    background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+    border-radius: 15px;
+    padding: 15px;
+    margin-top: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,215,0,0.2);
 }
 </style>
 """, unsafe_allow_html=True)
@@ -247,7 +290,7 @@ if "price_history" not in st.session_state:
 # INPUT UI
 # ------------------------------------------
 st.markdown('<div class="block">', unsafe_allow_html=True)
-st.subheader("⚙️ Configuration")
+st.subheader("Configuration")
 
 col1, col2 = st.columns(2)
 with col1:
@@ -269,11 +312,36 @@ else:
 investment = st.number_input("Investment ($)", min_value=1.0, value=1000.0, step=1.0)
 threshold = st.slider("Profit Threshold (%)", 0.1, 10.0, 1.0)
 
+# Profit Preview Section
+st.subheader("Profit Preview")
+preview_buy = create_exchange(buy_ex)
+preview_sell = create_exchange(sell_ex)
+if preview_buy and preview_sell:
+    if symbol in preview_buy.markets and symbol in preview_sell.markets:
+        pb_preview = get_price(preview_buy, symbol)
+        ps_preview = get_price(preview_sell, symbol)
+        if pb_preview and ps_preview:
+            diff_preview = ((ps_preview - pb_preview) / pb_preview) * 100
+            profit_preview = investment * (diff_preview / 100)
+            col_prev = st.columns(3)
+            with col_prev[0]:
+                st.metric("Buy Price", f"${pb_preview:.2f}")
+            with col_prev[1]:
+                st.metric("Sell Price", f"${ps_preview:.2f}")
+            with col_prev[2]:
+                st.metric("Potential Profit", f"${profit_preview:.2f} ({diff_preview:.2f}%)")
+        else:
+            st.warning("Unable to fetch preview prices.")
+    else:
+        st.warning("Pair not available on selected exchanges for preview.")
+else:
+    st.warning("Exchange preview unavailable.")
+
 colA, colB = st.columns(2)
 with colA:
-    perform = st.button("▶️ Perform")
+    perform = st.button("Perform")
 with colB:
-    stop = st.button("⛔ Stop")
+    stop = st.button("Stop")
 
 sim = st.checkbox("Simulation Mode", True)
 st.markdown('</div>', unsafe_allow_html=True)
@@ -282,7 +350,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 # LIVE MONITORING SECTION
 # ------------------------------------------
 st.markdown('<div class="block">', unsafe_allow_html=True)
-st.subheader("📊 Live Monitoring")
+st.subheader("Live Monitoring")
 
 if st.session_state.armed and not st.session_state.stop:
     buy = create_exchange(buy_ex, buy_api_key, buy_secret)
@@ -311,68 +379,4 @@ if st.session_state.armed and not st.session_state.stop:
                     st.session_state.price_history["diff"].pop(0)
                 
                 colx, coly, colz = st.columns(3)
-                with colx:
-                    st.markdown(f"<div class='metric-green'><h4>Buy @ {buy_ex.capitalize()}</h4><p>${pb:.2f}</p></div>", unsafe_allow_html=True)
-                with coly:
-                    st.markdown(f"<div class='metric-red'><h4>Sell @ {sell_ex.capitalize()}</h4><p>${ps:.2f}</p></div>", unsafe_allow_html=True)
-                with colz:
-                    st.markdown(f"<div class='metric-profit'><h4>Profit</h4><p>${profit:.2f} ({diff:.2f}%)</p></div>", unsafe_allow_html=True)
-
-                # Chart using Streamlit's built-in line chart
-                if st.session_state.price_history["buy"]:
-                    df = pd.DataFrame({
-                        "Buy Price": st.session_state.price_history["buy"],
-                        "Sell Price": st.session_state.price_history["sell"],
-                        "Diff %": st.session_state.price_history["diff"]
-                    })
-                    st.line_chart(df, use_container_width=True)
-
-                if diff >= threshold:
-                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    if sim:
-                        st.success(f"🚀 PROFIT DETECTED (SIMULATION): +${profit:.2f} ({diff:.2f}%) — simulated trade executed.")
-                        st.session_state.log.append(f"{timestamp}: Simulated trade: +${profit:.2f} ({diff:.2f}%)")
-                    else:
-                        amount = investment / pb
-                        buy_order = execute_trade(buy, 'buy', symbol, amount, pb)
-                        sell_order = execute_trade(sell, 'sell', symbol, amount, ps)
-                        if buy_order and sell_order:
-                            st.success(f"🚀 PROFIT DETECTED: Real trade executed! +${profit:.2f} ({diff:.2f}%)")
-                            st.session_state.log.append(f"{timestamp}: Real trade executed: +${profit:.2f} ({diff:.2f}%)")
-                        else:
-                            st.error("Real trade failed. Check balances and permissions.")
-                    st.session_state.armed = False
-                else:
-                    st.info(f"Monitoring... Diff: {diff:.2f}% (< {threshold}%)")
-            else:
-                st.warning("Price unavailable on one or both exchanges.")
-    time.sleep(3)
-    st.rerun()
-else:
-    st.info("Click ▶️ Perform to start monitoring.")
-
-st.markdown('</div>', unsafe_allow_html=True)
-
-# ------------------------------------------
-# TRADE HISTORY SECTION
-# ------------------------------------------
-st.markdown('<div class="block">', unsafe_allow_html=True)
-st.subheader("📜 Recent Trades History")
-if st.session_state.log:
-    st.write("\n".join(st.session_state.log[-20:]))
-else:
-    st.info("No trades yet. Click ▶️ Perform to start monitoring.")
-st.markdown('</div>', unsafe_allow_html=True)
-
-# ------------------------------------------
-# MAIN LOOP TRIGGER
-# ------------------------------------------
-if perform:
-    st.session_state.armed = True
-    st.session_state.stop = False
-    st.success("⚙️ Bot armed — scanning for profitable signals...")
-
-if stop:
-    st.session_state.armed = False
-    st.session_state.stop = True
-    st.warning("⛔ Bot stopped manually.")
+                with colx
