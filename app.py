@@ -95,7 +95,8 @@ div[data-testid="stAppViewContainer"] > .main {
 # ------------------------------------------
 # AUTHENTICATION
 # ------------------------------------------
-name, authentication_status, username = authenticator.login('Login', 'main')
+name, authentication_status, username = authenticator.login(location='main', fields=['username', 'password'])
+
 
 if authentication_status:
     # User is logged in - show the dashboard
