@@ -3,8 +3,7 @@ import streamlit as st
 import time
 import logging
 import datetime
-from decimal import Decimal
-import plotly.graph_objects as go
+import pandas as pd
 
 # ------------------------------------------
 # BASIC CONFIG
@@ -215,19 +214,14 @@ if st.session_state.armed and not st.session_state.stop:
                 with colz:
                     st.markdown(f"<div class='metric-profit'><h4>Profit</h4><p>${profit:.2f} ({diff:.2f}%)</p></div>", unsafe_allow_html=True)
 
-                # Chart
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(y=st.session_state.price_history["buy"], mode='lines', name='Buy Price', line=dict(color='green')))
-                fig.add_trace(go.Scatter(y=st.session_state.price_history["sell"], mode='lines', name='Sell Price', line=dict(color='red')))
-                fig.add_trace(go.Scatter(y=st.session_state.price_history["diff"], mode='lines', name='Diff %', line=dict(color='gold'), yaxis='y2'))
-                fig.update_layout(
-                    title="Price & Diff History",
-                    xaxis_title="Time",
-                    yaxis_title="Price ($)",
-                    yaxis2=dict(title="Diff (%)", overlaying='y', side='right'),
-                    template="plotly_dark"
-                )
-                st.plotly_chart(fig, use_container_width=True)
+                # Chart using Streamlit's built-in line chart
+                if st.session_state.price_history["buy"]:
+                    df = pd.DataFrame({
+                        "Buy Price": st.session_state.price_history["buy"],
+                        "Sell Price": st.session_state.price_history["sell"],
+                        "Diff %": st.session_state.price_history["diff"]
+                    })
+                    st.line_chart(df, use_container_width=True)
 
                 if diff >= threshold:
                     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
